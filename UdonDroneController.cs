@@ -499,6 +499,20 @@ namespace Kurotori.UDrone
             }
         }
 
+        public override void OnPlayerJoined(VRCPlayerApi player)
+        {
+            if(player.isLocal)
+            {
+                if(station.seated)
+                {
+                    HidePickup();
+                }
+                else
+                {
+                    ShowPickup();
+                }
+            }
+        }
 
         private void Update()
         {
@@ -525,6 +539,11 @@ namespace Kurotori.UDrone
                     {
                         DesktopControl();
                     }
+                }
+
+                if (Input.GetKeyDown(KeyCode.P))
+                {
+                    ResetDrone();
                 }
             }
         }
@@ -1087,6 +1106,83 @@ namespace Kurotori.UDrone
         {
             customRVertical = "Joy2 Axis 10";
         }
+
+        // Oculus_GearVR_Thumbstickにはデッドゾーンがない
+
+        // Oculus_GearVR_LThumbstickX
+        public void SetLH_Oculus_GearVR_LThumbstickX()
+        {
+            customLHorizontal = "Oculus_GearVR_LThumbstickX";
+        }
+        public void SetLV_Oculus_GearVR_LThumbstickX()
+        {
+            customLVertical = "Oculus_GearVR_LThumbstickX";
+        }
+        public void SetRH_Oculus_GearVR_LThumbstickX()
+        {
+            customRHorizontal = "Oculus_GearVR_LThumbstickX";
+        }
+        public void SetRV_Oculus_GearVR_LThumbstickX()
+        {
+            customRVertical = "Oculus_GearVR_LThumbstickX";
+        }
+
+        // Oculus_GearVR_LThumbstickY
+        public void SetLH_Oculus_GearVR_LThumbstickY()
+        {
+            customLHorizontal = "Oculus_GearVR_LThumbstickY";
+        }
+        public void SetLV_Oculus_GearVR_LThumbstickY()
+        {
+            customLVertical = "Oculus_GearVR_LThumbstickY";
+        }
+        public void SetRH_Oculus_GearVR_LThumbstickY()
+        {
+            customRHorizontal = "Oculus_GearVR_LThumbstickY";
+        }
+        public void SetRV_Oculus_GearVR_LThumbstickY()
+        {
+            customRVertical = "Oculus_GearVR_LThumbstickY";
+        }
+
+
+        // Oculus_GearVR_RThumbstickX
+        public void SetLH_Oculus_GearVR_RThumbstickX()
+        {
+            customLHorizontal = "Oculus_GearVR_RThumbstickX";
+        }
+        public void SetLV_Oculus_GearVR_RThumbstickX()
+        {
+            customLVertical = "Oculus_GearVR_RThumbstickX";
+        }
+        public void SetRH_Oculus_GearVR_RThumbstickX()
+        {
+            customRHorizontal = "Oculus_GearVR_RThumbstickX";
+        }
+        public void SetRV_Oculus_GearVR_RThumbstickX()
+        {
+            customRVertical = "Oculus_GearVR_RThumbstickX";
+        }
+
+
+        // Oculus_GearVR_RThumbstickY
+        public void SetLH_Oculus_GearVR_RThumbstickY()
+        {
+            customLHorizontal = "Oculus_GearVR_RThumbstickY";
+        }
+        public void SetLV_Oculus_GearVR_RThumbstickY()
+        {
+            customLVertical = "Oculus_GearVR_RThumbstickY";
+        }
+        public void SetRH_Oculus_GearVR_RThumbstickY()
+        {
+            customRHorizontal = "Oculus_GearVR_RThumbstickY";
+        }
+        public void SetRV_Oculus_GearVR_RThumbstickY()
+        {
+            customRVertical = "Oculus_GearVR_RThumbstickY";
+        }
+
 
         #endregion
 

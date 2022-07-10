@@ -66,6 +66,7 @@ namespace Kurotori.UDrone
         const int STATE_R_VERTICAL = 4;
 
         string[] stickInputsLabel;
+        string[] stickInputsOculusGearVR;
 
         float[] stickInputPrevValues;
         float[] stickInputTotalValues;
@@ -105,6 +106,14 @@ namespace Kurotori.UDrone
             "Joy2 Axis 9",
             "Joy2 Axis 10"
                 };
+
+            stickInputsOculusGearVR = new string[]
+            {
+                "Oculus_GearVR_LThumbstickX",
+                "Oculus_GearVR_LThumbstickY",
+                "Oculus_GearVR_RThumbstickX",
+                "Oculus_GearVR_RThumbstickY",
+            };
 
             stickInputTotalValues = new float[stickInputsLabel.Length];
             stickInputPrevValues = new float[stickInputsLabel.Length];
@@ -434,37 +443,86 @@ namespace Kurotori.UDrone
         public void LHDropDownSet()
         {
             int index = LHDropDown.value;
-            currentLHText.text = stickInputsLabel[index];
 
-            string functionName = "SetLH_" + GetJoyName(index);
-            SendCustomEventAll(functionName);
+            if (index >= stickInputsLabel.Length)
+            {
+                var newindex = index - stickInputsLabel.Length;
+                string functionName = "SetLH_" + stickInputsOculusGearVR[newindex];
+                currentLHText.text = stickInputsOculusGearVR[newindex]; ;
+                SendCustomEventAll(functionName);
+            }
+            else
+            {
+                currentLHText.text = stickInputsLabel[index];
+
+                string functionName = "SetLH_" + GetJoyName(index);
+                SendCustomEventAll(functionName);
+            }
         }
 
         public void LVDropDownSet()
         {
             int index = LVDropDown.value;
-            currentLVText.text = stickInputsLabel[index];
 
-            string functionName = "SetLV_" + GetJoyName(index);
-            SendCustomEventAll(functionName);
+            if (index >= stickInputsLabel.Length)
+            {
+                var newindex = index - stickInputsLabel.Length;
+                string functionName = "SetLV_" + stickInputsOculusGearVR[newindex];
+                currentLVText.text = stickInputsOculusGearVR[newindex];
+                SendCustomEventAll(functionName);
+            }
+            else
+            {
+                currentLVText.text = stickInputsLabel[index];
+
+                string functionName = "SetLV_" + GetJoyName(index);
+                SendCustomEventAll(functionName);
+            }
+
+            
         }
 
         public void RHDropDownSet()
         {
             int index = RHDropDown.value;
-            currentRHText.text = stickInputsLabel[index];
+            
 
-            string functionName = "SetRH_" + GetJoyName(index);
-            SendCustomEventAll(functionName);
+            if (index >= stickInputsLabel.Length)
+            {
+                var newindex = index - stickInputsLabel.Length;
+                string functionName = "SetRH_" + stickInputsOculusGearVR[newindex];
+                currentRHText.text = stickInputsOculusGearVR[newindex];
+                SendCustomEventAll(functionName);
+            }
+            else
+            {
+                currentRHText.text = stickInputsLabel[index];
+
+                string functionName = "SetRH_" + GetJoyName(index);
+                SendCustomEventAll(functionName);
+            }
+
+            
         }
 
         public void RVDropDownSet()
         {
             int index = RVDropDown.value;
-            currentRVText.text = stickInputsLabel[index];
+            
+            if (index >= stickInputsLabel.Length)
+            {
+                var newindex = index - stickInputsLabel.Length;
+                string functionName = "SetRV_" + stickInputsOculusGearVR[newindex];
+                currentRVText.text = stickInputsOculusGearVR[newindex];
+                SendCustomEventAll(functionName);
+            }
+            else
+            {
+                currentRVText.text = stickInputsLabel[index];
 
-            string functionName = "SetRV_" + GetJoyName(index);
-            SendCustomEventAll(functionName);
+                string functionName = "SetRV_" + GetJoyName(index);
+                SendCustomEventAll(functionName);
+            }
         }
 
     }

@@ -20,6 +20,7 @@ namespace Kurotori.UDrone
 
         GameObject[] sticks;
         Slider[] stickValues;
+        TextMeshProUGUI[] valueLabels;
 
         void Start()
         {
@@ -68,6 +69,7 @@ namespace Kurotori.UDrone
 
             sticks = new GameObject[stickInputs.Length];
             stickValues = new Slider[stickInputs.Length];
+            valueLabels = new TextMeshProUGUI[stickInputs.Length];
 
             for (int i = 0; i < stickInputs.Length; ++i)
             {
@@ -77,8 +79,21 @@ namespace Kurotori.UDrone
                 sticks[i].transform.localPosition = Vector3.zero;
                 sticks[i].transform.localRotation = Quaternion.identity;
 
-                var label = sticks[i].GetComponentInChildren<TextMeshProUGUI>();
-                label.text = stickInputs[i];
+                var labels = sticks[i].GetComponentsInChildren<TextMeshProUGUI>();
+
+
+                foreach(var label in labels)
+                {
+                    if(label.gameObject.name.Equals("InputLabel"))
+                    {
+                        label.text = stickInputs[i];
+                    }
+                    else if(label.gameObject.name.Equals("ValueLabel"))
+                    {
+                        valueLabels[i] = label;
+                    }
+                }
+
 
 
                 stickValues[i] = sticks[i].GetComponentInChildren<Slider>();
@@ -91,6 +106,7 @@ namespace Kurotori.UDrone
             {
                 var value = Input.GetAxisRaw(stickInputs[i]);
                 stickValues[i].value = value;
+                valueLabels[i].text = value.ToString();
             }
         }
     }
