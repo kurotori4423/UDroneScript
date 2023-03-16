@@ -8,13 +8,14 @@ using TMPro;
 
 namespace Kurotori.UDrone
 {
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class JoyInputAttacher : UdonSharpBehaviour
     {
         [Header("ドローンコントローラー")]
         [SerializeField]
         public GameObject[] controllersObj;
 
-        [Header("UI表示")]
+        
         [SerializeField]
         TextMeshProUGUI currentLHText;
         [SerializeField]
@@ -113,6 +114,8 @@ namespace Kurotori.UDrone
                 "Oculus_GearVR_LThumbstickY",
                 "Oculus_GearVR_RThumbstickX",
                 "Oculus_GearVR_RThumbstickY",
+                "Oculus_GearVR_DpadX",
+                "Oculus_GearVR_DpadY",
             };
 
             stickInputTotalValues = new float[stickInputsLabel.Length];
@@ -341,6 +344,10 @@ namespace Kurotori.UDrone
 
         private void Update()
         {
+#if UNITY_EDITOR
+            return;
+#endif
+
             if (state == STATE_WAIT)
             {
                 float lx = Input.GetAxis(currentLHText.text) * (InvLHToggle.isOn ? -1 : 1);

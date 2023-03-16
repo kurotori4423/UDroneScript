@@ -11,6 +11,12 @@ using UdonSharpEditor;
 
 namespace Kurotori.UDrone
 {
+    public enum DRONE_MODE
+    {
+        ANGLE,
+        ACRO
+    };
+
     /// <summary>
     /// ドローン本体スクリプト
     /// </summary>
@@ -18,133 +24,145 @@ namespace Kurotori.UDrone
     {
         float COS45 = 0.52532198881f;
 
-        Rigidbody body;
+        Rigidbody m_Body;
 
         [Header("Controller")]
         [SerializeField]
-        public UdonDroneController controller;
+        private IDroneController m_Controller;
 
         [SerializeField]
         [Tooltip("リセット位置")]
-        public Transform resetPos;
+        public Transform m_ResetPos;
 
-
+        //[SerializeField]
+        //[Tooltip("グローバル設定")]
+        //public DroneSetting m_DroneSetting;
 
         [Header("機体制御設定 -----------------------------------------------------------------")]
         [SerializeField]
         [Tooltip("制御モード\n 0:アングルモード \n 1:アクロモード")]
         [Range(0, 1)]
-        public int mode = 0;
+        private int m_Mode = 0;
 
         const int MODE_ANGLE = 0;
         const int MODE_ACRO = 1;
 
         [SerializeField]
         [Tooltip("高度維持機能[アングルモードのみ]")]
-        bool HightAdjustMode = true;
+        private bool m_HightAdjustMode = true;
+
+        [SerializeField]
+        [Tooltip("スロットルセンターホバリングモード\n[スロットルが中間の時にホバリング出力に補正する]")]
+        private bool m_ThrottleCenterHovering = true;
 
         [SerializeField]
         [Tooltip("プロペラの逆転を許可(許可しない方がリアルですが、許可した方が操作性が上がります)")]
-        bool allowPropellerReversal = true;
+        bool m_AllowPropellerReversal = true;
 
         [Header("機体形状設定 -----------------------------------------------------------------")]
         [SerializeField]
         [Tooltip("推進力が発生するポイントの重心からの距離です")]
-        float forcePointRadius = 1.0f;
+        float m_ForcePointRadius = 1.0f;
         [SerializeField]
         [Tooltip("推進力が発生するポイントの重心からの上下方向のオフセット量です")]
-        float forcePointHeight = 0.1f;
+        float m_ForcePointHeight = 0.1f;
 
         [SerializeField]
         [Tooltip("空気抵抗")]
-        float drag = 0.18f;
+        float m_Drag = 0.18f;
+
+        [SerializeField]
+        [Tooltip("プロペラ推力気流速度比")]
+        float m_PropellarAirSpeedRate = 0.1f;
+
+        [SerializeField]
+        [Tooltip("機体最高速[m/s]")]
+        float m_TopSpeed = 30;
 
         [Header("機体出力設定 -----------------------------------------------------------------")]
-        [SerializeField]
-        [Tooltip("最大機体出力: 重力と釣り合う状態を0とします。[機体質量に比例]")]
-        float maxForce = 5.0f;
+        //[SerializeField]
+        //[Tooltip("最大機体出力: 重力と釣り合う状態を0とします。[機体質量に比例]")]
+        //float maxForce = 5.0f;
 
         [SerializeField]
         [Tooltip("最大上昇スロットル[機体質量に比例]")]
-        float upForce = 2.0f;
+        float m_MaxThrottleForce = 2.0f;
 
         [SerializeField]
         [Tooltip("最大回転出力[回転時に使う最高スロットル出力][機体質量に比例]")]
-        float maxRotationThrottleForce = 1.0f;
+        float m_MaxRotationThrottleForce = 1.0f;
 
         [SerializeField]
         [Tooltip("ヨー回転時の最大出力[機体質量に比例]")]
-        float yawForce = 10.0f;
+        float m_YawForce = 10.0f;
 
-        float force = 0;
+        float m_Force = 0;
 
-        float frontForce = 0;
-        float backForce = 0;
-        float leftForce = 0;
-        float rightForce = 0;
+        float m_FrontForce = 0;
+        float m_BackForce = 0;
+        float m_LeftForce = 0;
+        float m_RightForce = 0;
+        float m_RollTorque = 0;
 
-        float forceRF = 0;
-        float forceRB = 0;
-        float forceLF = 0;
-        float forceLB = 0;
+        float m_ForceRF = 0;
+        float m_ForceRB = 0;
+        float m_ForceLF = 0;
+        float m_ForceLB = 0;
 
         [Header("操作感度設定 -----------------------------------------------------------------")]
         [SerializeField]
         [Tooltip("高度維持機能有効時の最大出力変化量")]
-        float brakeMax = 0.3f; // 最大変化量
+        float m_BrakeMax = 0.3f; // 最大変化量
 
         // コントローラー入力
-        [HideInInspector] public float throttle = -1; // 上昇
-        [HideInInspector] public float rudder = 0; // 左右旋回
-        [HideInInspector] public float elevator = 0; // 前進・後退
-        [HideInInspector] public float aileron = 0; // 左右スライド
+        [HideInInspector] private float m_Throttle = -1; // 上昇
+        [HideInInspector] private float m_Rudder = 0; // 左右旋回
+        [HideInInspector] private float m_Elevator = 0; // 前進・後退
+        [HideInInspector] private float m_Aileron = 0; // 左右スライド
 
-        float throttleOutput = 0; // 高度制御なしの時のスロットル出力
-
-
-        [SerializeField]
-        [Tooltip("スロットル感度[高度維持機能オフ時]")]
-        float throttleSensitivity = 2.0f; // スロットル感度
-        [SerializeField]
-        [Tooltip("回転操作感度[アクロモード時]")]
-        float rotateSensitivity = 5.0f; // 回転感度
+        //[SerializeField]
+        //[Tooltip("スロットル感度[高度維持機能オフ時]")]
+        //float throttleSensitivity = 2.0f; // スロットル感度
+        //[SerializeField]
+        //[Tooltip("回転操作感度[アクロモード時]")]
+        //float rotateSensitivity = 5.0f; // 回転感度
 
         [Header("レート設定")]
         [SerializeField]
-        public bool useVRRate = true;
+        private bool m_UseVRRate = true;
         [SerializeField]
-        float rcRate = 1.0f;
+        float m_RcRate = 1.0f;
         [SerializeField]
-        float superRate = 0.6f;
+        float m_SuperRate = 0.6f;
         [SerializeField]
-        float rcExpo = 0.0f;
+        float m_RcExpo = 0.0f;
         [Header("VR用レート")]
         [SerializeField]
-        float rcRateVR = 3.0f;
+        float m_RcRateVR = 3.0f;
         [SerializeField]
-        float superRateVR = 0.0f;
+        float m_SuperRateVR = 0.0f;
         [SerializeField]
-        float rcExpoVR = 0.0f;
+        float m_RcExpoVR = 0.0f;
 
 
         [Header("高度維持機能関係 ---------------------------------------------------------------")]
         [SerializeField]
         [Tooltip("高度維持有効時の最大上昇下降速度(自由落下速度を超えると無視されます)")]
-        float maxSpeedOnHightAdjust = 3.0f;
+        float m_MaxSpeedOnHightAdjust = 3.0f;
 
         [Header("高度維持PID")]
         [SerializeField]
-        float hight_Kp = 0.2f;
+        float m_Hight_Kp = 0.2f;
         [SerializeField]
-        float hight_Ki = 0.2f;
+        float m_Hight_Ki = 0.2f;
         [SerializeField]
-        float hight_Kd = 0.1f;
+        float m_Hight_Kd = 0.1f;
 
-        float targetVelocity = 0; // 高度維持機能の目標速度
+        float m_TargetVelocity = 0; // 高度維持機能の目標速度
 
-        float prevPrevHightDiff = 0.0f;
-        float prevHightDiff = 0.0f;
-        float integralHight = 0.0f;
+        float m_PrevPrevHightDiff = 0.0f;
+        float m_PrevHightDiff = 0.0f;
+        float m_IntegralHight = 0.0f;
 
         [Header("姿勢制御関係 -----------------------------------------------------------------")]
         [Header("アングルモード専用")]
@@ -152,144 +170,163 @@ namespace Kurotori.UDrone
         [SerializeField]
         [Tooltip("最大傾斜角")]
         [Range(0, 90)]
-        float maxAngle = 35.0f; // 最大傾斜角
+        float m_MaxAngle = 35.0f; // 最大傾斜角
 
 
 
         [Header("角度維持PID（アングルモード）")]
 
         [SerializeField]
-        float angle_Kp = 0.7f;
+        float m_Angle_Kp = 0.7f;
         [SerializeField]
-        float angle_Ki = 0.7f;
+        float m_Angle_Ki = 0.7f;
         [SerializeField]
-        float angle_Kd = 0.1f;
+        float m_Angle_Kd = 0.1f;
 
-        float goalAngleX = 0;
-        float goalAngleZ = 0;
+        float m_GoalAngleX = 0;
+        float m_GoalAngleZ = 0;
 
-        float prevPrevAngleXDiff = 0.0f;
-        float prevAngleXDiff = 0.0f;
-        float integralAngleX = 0.0f;
+        float m_PrevPrevAngleXDiff = 0.0f;
+        float m_PrevAngleXDiff = 0.0f;
+        float m_IntegralAngleX = 0.0f;
 
-        float prevPrevAngleZDiff = 0.0f;
-        float prevAngleZDiff = 0.0f;
-        float integralAngleZ = 0.0f;
+        float m_PrevPrevAngleZDiff = 0.0f;
+        float m_PrevAngleZDiff = 0.0f;
+        float m_IntegralAngleZ = 0.0f;
 
         [Header("ヨー制御PID（アングルモード）")]
         [SerializeField]
-        float anglerYaw_Kp = 1;
+        float m_AnglerYaw_Kp = 1;
         [SerializeField]
-        float anglerYaw_Ki = 0.5f;
+        float m_AnglerYaw_Ki = 0.5f;
         [SerializeField]
-        float anglerYaw_Kd = 0.01f;
+        float m_AnglerYaw_Kd = 0.01f;
 
-        float goalAnglerYaw = 0.0f;
+        float m_GoalAnglerYaw = 0.0f;
 
-        float prevPrevAnglerYawDiff = 0.0f;
-        float prevAnglerYawDiff = 0.0f;
-        float integralAnglerYaw = 0.0f;
+        float m_PrevPrevAnglerYawDiff = 0.0f;
+        float m_PrevAnglerYawDiff = 0.0f;
+        float m_IntegralAnglerYaw = 0.0f;
 
         [Header("角速度制御PID（アクロモード）")]
 
         [SerializeField]
-        float anglerV_Kp = 1.0f;
+        float m_AnglerV_Kp = 1.0f;
         [SerializeField]
-        float anglerV_Ki = 0.5f;
+        float m_AnglerV_Ki = 0.5f;
         [SerializeField]
-        float anglerV_Kd = 0.01f;
+        float m_AnglerV_Kd = 0.01f;
 
-        Vector3 goalAnglerV;
+        Vector3 m_GoalAnglerV;
 
-        Vector3 prevPrevAnglerVDiff;
-        Vector3 prevAnglerVDiff;
-        Vector3 integralAnglerV;
+        Vector3 m_PrevPrevAnglerVDiff;
+        Vector3 m_PrevAnglerVDiff;
+        Vector3 m_IntegralAnglerV;
 
         [Header("見た目の設定 -----------------------------------------------------------------")]
         [SerializeField]
-        Transform frontRightFin;
+        Transform m_FrontRightFin;
         [SerializeField]
-        Transform frontLeftFin;
+        Transform m_FrontLeftFin;
         [SerializeField]
-        Transform backRightFin;
+        Transform m_BackRightFin;
         [SerializeField]
-        Transform backLeftFin;
+        Transform m_BackLeftFin;
         [SerializeField]
-        float lookRotationSpeed = 3;
+        float m_LookRotationSpeed = 3;
         [SerializeField]
         [Tooltip("回転軸[X = 0, Y = 1, Z = 2]")]
         [Range(0, 2)]
-        int lookPropellerAxis = 0;
+        int m_LookPropellerAxis = 0;
 
         [UdonSynced(UdonSyncMode.Smooth)]
-        float engineSpeed;
+        float m_EngineSpeed;
 
         [SerializeField]
-        AudioClip audioClip;
+        AudioClip m_AudioClip;
         [SerializeField]
-        AudioSource audioSource;
+        AudioSource m_AudioSource;
         [SerializeField]
-        float pitchFactor = 2.0f;
+        float m_PitchFactor = 2.0f;
         [SerializeField]
-        float maxPitch = 10.0f;
+        float m_MaxPitch = 10.0f;
 
         [Header("UI")]
         [SerializeField]
-        GameObject Mode_ACRO;
+        GameObject m_Mode_ACRO;
         [SerializeField]
-        GameObject Mode_ANGLE;
+        GameObject m_Mode_ANGLE;
 
         // リセット用初期姿勢
-        Vector3 initPosition;
-        Quaternion initRotation;
+        Vector3 m_InitPosition;
+        Quaternion m_InitRotation;
 
         [Tooltip("操作状態")]
-        public bool isArm = false;
+        private bool m_IsArm = false;
+
+        bool m_FlipOverMode = false;
 
         void Start()
         {
-            isArm = false;
+            m_IsArm = false;
+#if UNITY_EDITOR
+            m_IsArm = true;
+#endif
 
-            body = gameObject.GetComponent<Rigidbody>();
+            #region RigidBody Setting
+
+            m_Body = gameObject.GetComponent<Rigidbody>();
+
+            // 角速度最大値は無限にしておく（問題があれば修正）
+            m_Body.maxAngularVelocity = float.PositiveInfinity;
 
             // 空気抵抗は自前で計算するため0に設定
-            body.drag = 0.0f;
+            m_Body.drag = 0.0f;
 
-            if (controller != null)
-                controller.SetDrone(this);
+            #endregion
 
-            if (audioSource != null && audioClip != null)
+            if (m_Controller != null)
+                m_Controller.SetDrone(this);
+
+            #region Audio Setup
+            if (m_AudioSource != null && m_AudioClip != null)
             {
-                audioSource.clip = audioClip;
-                audioSource.loop = true;
-                audioSource.Play();
+                m_AudioSource.clip = m_AudioClip;
+                m_AudioSource.loop = true;
+                m_AudioSource.Play();
             }
+            #endregion
 
-            initPosition = body.position;
-            initRotation = body.rotation;
+            m_InitPosition = m_Body.position;
+            m_InitRotation = m_Body.rotation;
 
-            switch (mode)
+            #region Setup UI
+
+            switch (m_Mode)
             {
                 case MODE_ACRO:
-                    if (Mode_ANGLE)
-                        Mode_ANGLE.SetActive(false);
-                    if (Mode_ACRO)
-                        Mode_ACRO.SetActive(true);
+                    if (m_Mode_ANGLE)
+                        m_Mode_ANGLE.SetActive(false);
+                    if (m_Mode_ACRO)
+                        m_Mode_ACRO.SetActive(true);
                     break;
                 case MODE_ANGLE:
-                    if (Mode_ANGLE)
-                        Mode_ANGLE.SetActive(true);
-                    if (Mode_ACRO)
-                        Mode_ACRO.SetActive(false);
+                    if (m_Mode_ANGLE)
+                        m_Mode_ANGLE.SetActive(true);
+                    if (m_Mode_ACRO)
+                        m_Mode_ACRO.SetActive(false);
                     break;
             }
+
+            #endregion
 
         }
 
         private void FixedUpdate()
         {
+
 #if !UNITY_EDITOR
-        if (!Networking.LocalPlayer.IsOwner(gameObject))
+        if (Networking.LocalPlayer != null && !Networking.LocalPlayer.IsOwner(gameObject))
         {
             LookUpdate();
             return;
@@ -299,184 +336,300 @@ namespace Kurotori.UDrone
 
             InputUpdate();
 
-            var axleLen = forcePointRadius * COS45;
-
-            var frontRight = transform.TransformPoint(new Vector3(axleLen, forcePointHeight + body.centerOfMass.y, axleLen));
-            var frontLeft = transform.TransformPoint(new Vector3(-axleLen, forcePointHeight + body.centerOfMass.y, axleLen));
-            var backRight = transform.TransformPoint(new Vector3(axleLen, forcePointHeight + body.centerOfMass.y, -axleLen));
-            var backLeft = transform.TransformPoint(new Vector3(-axleLen, forcePointHeight + body.centerOfMass.y, -axleLen));
-
-            var downDir = body.transform.TransformDirection(Vector3.up);
-
-            if (isArm)
+            
+            if (m_IsArm)
             {
 
                 // PID制御 上下方向速度を0になるように調整する
-                if (HightAdjustMode)
+                if (m_HightAdjustMode)
                 {
                     HightAdjustPID();
                 }
 
                 // 姿勢制御 特定の角度を維持する
 
-                switch (mode)
+                switch (m_Mode)
                 {
                     case MODE_ANGLE:
                         {
-                            float angleX = Mathf.Repeat(body.transform.localRotation.eulerAngles.x + 180, 360) - 180;
-                            float angleZ = Mathf.Repeat(body.transform.localRotation.eulerAngles.z + 180, 360) - 180;
-
-                            {
-                                prevPrevAngleXDiff = prevAngleXDiff;
-
-                                prevAngleXDiff = angleX - goalAngleX;
-                                integralAngleX = (prevPrevAngleXDiff + prevAngleXDiff) * 0.5f * Time.deltaTime;
-
-                                float P = prevAngleXDiff * (angle_Kp * body.mass);
-                                float I = integralAngleX * (angle_Ki * body.mass);
-                                float D = (angle_Kd * body.mass) * (prevAngleXDiff - prevPrevAngleXDiff) / Time.deltaTime;
-
-                                float adjustAngleXForce = -(P + I + D);
-
-                                adjustAngleXForce = Mathf.Sign(adjustAngleXForce) * Mathf.Min(Mathf.Abs(adjustAngleXForce), maxRotationThrottleForce * body.mass);
-
-                                frontForce = -adjustAngleXForce;
-                                backForce = adjustAngleXForce;
-                            }
-
-
-                            {
-                                prevPrevAngleZDiff = prevAngleZDiff;
-                                prevAngleZDiff = angleZ - goalAngleZ;
-                                integralAngleZ = (prevPrevAngleZDiff + prevAngleZDiff) * 0.5f * Time.deltaTime;
-
-                                float P = prevAngleZDiff * (anglerYaw_Kp * body.mass);
-                                float I = integralAngleZ * (angle_Ki * body.mass);
-                                float D = (angle_Kd * body.mass) * (prevAngleZDiff - prevPrevAngleZDiff) / Time.deltaTime;
-
-                                float adjustAngleZForce = -(P + I + D);
-
-                                adjustAngleZForce = Mathf.Sign(adjustAngleZForce) * Mathf.Min(Mathf.Abs(adjustAngleZForce), maxRotationThrottleForce * body.mass);
-
-                                leftForce = -adjustAngleZForce;
-                                rightForce = adjustAngleZForce;
-                            }
-
-                            {
-
-                                prevPrevAnglerYawDiff = prevAnglerYawDiff;
-                                prevAnglerYawDiff = body.angularVelocity.y - goalAnglerYaw;
-                                integralAnglerYaw = (prevPrevAnglerYawDiff + prevAnglerYawDiff) * 0.5f * Time.deltaTime;
-
-                                float P = prevAnglerYawDiff * (anglerYaw_Kp * body.mass);
-                                float I = integralAnglerYaw * (anglerYaw_Ki * body.mass);
-                                float D = (anglerYaw_Kd * body.mass) * (prevAnglerYawDiff - prevPrevAnglerYawDiff) / Time.deltaTime;
-
-                                float adjustAnglerYawForce = -(P + I + D);
-                                float angleForceY = Mathf.Sign(adjustAnglerYawForce) * Mathf.Min(Mathf.Abs(adjustAnglerYawForce), maxRotationThrottleForce * body.mass);
-
-                                body.AddTorque(Vector3.up * (angleForceY * yawForce));
-                            }
+                            CalcAngleModePID();
                         }
                         break;
                     case MODE_ACRO:
                         {
-                            Vector3 localAnglerVelocity = body.transform.InverseTransformDirection(body.angularVelocity).normalized * body.angularVelocity.magnitude;
-
-                            prevPrevAnglerVDiff = prevAnglerVDiff;
-
-                            prevAnglerVDiff = localAnglerVelocity - goalAnglerV;
-                            integralAnglerV = (prevPrevAnglerVDiff - prevAnglerVDiff) * 0.5f * Time.deltaTime;
-
-                            // PID値は機体質量に比例
-                            Vector3 P = prevAnglerVDiff * (anglerV_Kp * body.mass);
-                            Vector3 I = integralAnglerV * (anglerV_Ki * body.mass);
-                            Vector3 D = (anglerV_Kd * body.mass) * (prevAnglerVDiff - prevPrevAnglerVDiff) / Time.deltaTime;
-
-                            Vector3 pid = -(P + I + D);
-
-                            float angleForceX = Mathf.Sign(pid.x) * Mathf.Min(Mathf.Abs(pid.x), maxRotationThrottleForce * body.mass);
-                            frontForce = -angleForceX;
-                            backForce = angleForceX;
-
-                            float angleForceZ = Mathf.Sign(pid.z) * Mathf.Min(Mathf.Abs(pid.z), maxRotationThrottleForce * body.mass);
-                            leftForce = -angleForceZ;
-                            rightForce = angleForceZ;
-
-                            float angleForceY = Mathf.Sign(pid.y) * Mathf.Min(Mathf.Abs(pid.y), maxRotationThrottleForce * body.mass);
-                            body.AddRelativeTorque(Vector3.up * (angleForceY * yawForce));
-
+                            CalcAcroModePID();
                         }
                         break;
                 }
 
+                m_ForceRF = m_Force + m_FrontForce + m_RightForce;
+                m_ForceLF = m_Force + m_FrontForce + m_LeftForce;
+                m_ForceRB = m_Force + m_BackForce + m_RightForce;
+                m_ForceLB = m_Force + m_BackForce + m_LeftForce;
 
-                if (allowPropellerReversal)
-                {
-                    forceRF = Mathf.Min(force + frontForce + rightForce, maxForce);
-                    forceLF = Mathf.Min(force + frontForce + leftForce, maxForce);
-                    forceRB = Mathf.Min(force + backForce + rightForce, maxForce);
-                    forceLB = Mathf.Min(force + backForce + leftForce, maxForce);
-                }
-                else
-                {
-                    forceRF = Mathf.Clamp(force + frontForce + rightForce, 0, maxForce);
-                    forceLF = Mathf.Clamp(force + frontForce + leftForce, 0, maxForce);
-                    forceRB = Mathf.Clamp(force + backForce + rightForce, 0, maxForce);
-                    forceLB = Mathf.Clamp(force + backForce + leftForce, 0, maxForce);
-                }
+                ApplyPropellerReversal();
 
             }
             else
             {
-                forceRF = 0;
-                forceLF = 0;
-                forceRB = 0;
-                forceLB = 0;
+                m_Force = 0;
+                m_ForceRF = 0;
+                m_ForceLF = 0;
+                m_ForceRB = 0;
+                m_ForceLB = 0;
             }
-            float forceAll = Mathf.Abs(forceRF + forceLF + forceRB + forceLB);
 
-            engineSpeed = forceAll / body.mass;
+            //Debug.Log("m_Force:" + m_Force);
 
-            body.AddForceAtPosition(downDir * forceRF, frontRight);
-            body.AddForceAtPosition(downDir * forceLF, frontLeft);
-            body.AddForceAtPosition(downDir * forceRB, backRight);
-            body.AddForceAtPosition(downDir * forceLB, backLeft);
+            float forceAll = Mathf.Abs(m_ForceRF + m_ForceLF + m_ForceRB + m_ForceLB);
 
-            // 空気抵抗計算
+            m_EngineSpeed = m_Force;
+            
+            ApplyDroneForce();
+
+            var propDir = m_Body.transform.TransformDirection(Vector3.up);
+            CalcPropDrop(propDir);
             {
-                body.AddForce(-body.velocity * drag);
+                // 空気抵抗計算
+                m_Body.AddForce(-m_Body.velocity * m_Drag);
+            }
+        }
+
+        /// <summary>
+        /// プロペラの逆転をするかしないか適用
+        /// </summary>
+        void ApplyPropellerReversal()
+        {
+            if (!m_AllowPropellerReversal)
+            {
+                m_ForceRF = Mathf.Max(m_ForceRF, 0);
+                m_ForceLF = Mathf.Max(m_ForceLF, 0);
+                m_ForceRB = Mathf.Max(m_ForceRB, 0);
+                m_ForceLB = Mathf.Max(m_ForceLB, 0);
+            }
+        }
+
+        void CalcAngleModePID()
+        {
+            float angleX = Mathf.Repeat(m_Body.transform.localRotation.eulerAngles.x + 180, 360) - 180;
+            float angleZ = Mathf.Repeat(m_Body.transform.localRotation.eulerAngles.z + 180, 360) - 180;
+
+            {
+                m_PrevPrevAngleXDiff = m_PrevAngleXDiff;
+
+                m_PrevAngleXDiff = angleX - m_GoalAngleX;
+                m_IntegralAngleX += (m_PrevPrevAngleXDiff + m_PrevAngleXDiff) * 0.5f * Time.deltaTime;
+
+                float P = m_PrevAngleXDiff * (m_Angle_Kp * m_Body.mass);
+                float I = m_IntegralAngleX * (m_Angle_Ki * m_Body.mass);
+                float D = (m_Angle_Kd * m_Body.mass) * (m_PrevAngleXDiff - m_PrevPrevAngleXDiff) / Time.deltaTime;
+
+                float adjustAngleXForce = -(P + I + D);
+
+                adjustAngleXForce = Mathf.Sign(adjustAngleXForce) * Mathf.Min(Mathf.Abs(adjustAngleXForce), m_MaxRotationThrottleForce * m_Body.mass);
+
+                m_FrontForce = -adjustAngleXForce;
+                m_BackForce = adjustAngleXForce;
             }
 
+
+            {
+                m_PrevPrevAngleZDiff = m_PrevAngleZDiff;
+                m_PrevAngleZDiff = angleZ - m_GoalAngleZ;
+                m_IntegralAngleZ += (m_PrevPrevAngleZDiff + m_PrevAngleZDiff) * 0.5f * Time.deltaTime;
+
+                float P = m_PrevAngleZDiff * (m_Angle_Kp * m_Body.mass);
+                float I = m_IntegralAngleZ * (m_Angle_Ki * m_Body.mass);
+                float D = (m_Angle_Kd * m_Body.mass) * (m_PrevAngleZDiff - m_PrevPrevAngleZDiff) / Time.deltaTime;
+
+                float adjustAngleZForce = -(P + I + D);
+
+                adjustAngleZForce = Mathf.Sign(adjustAngleZForce) * Mathf.Min(Mathf.Abs(adjustAngleZForce), m_MaxRotationThrottleForce * m_Body.mass);
+
+                m_LeftForce = -adjustAngleZForce;
+                m_RightForce = adjustAngleZForce;
+            }
+
+            {
+
+                m_PrevPrevAnglerYawDiff = m_PrevAnglerYawDiff;
+                m_PrevAnglerYawDiff = m_Body.angularVelocity.y - m_GoalAnglerYaw;
+                m_IntegralAnglerYaw += (m_PrevPrevAnglerYawDiff + m_PrevAnglerYawDiff) * 0.5f * Time.deltaTime;
+
+                float P = m_PrevAnglerYawDiff * (m_AnglerYaw_Kp * m_Body.mass);
+                float I = m_IntegralAnglerYaw * (m_AnglerYaw_Ki * m_Body.mass);
+                float D = (m_AnglerYaw_Kd * m_Body.mass) * (m_PrevAnglerYawDiff - m_PrevPrevAnglerYawDiff) / Time.deltaTime;
+
+                float adjustAnglerYawForce = -(P + I + D);
+                float angleForceY = Mathf.Sign(adjustAnglerYawForce) * Mathf.Min(Mathf.Abs(adjustAnglerYawForce), m_MaxRotationThrottleForce * m_Body.mass);
+
+                //body.AddTorque(Vector3.up * (angleForceY * yawForce));
+                m_RollTorque = angleForceY;
+            }
+        }
+
+        void CalcAcroModePID()
+        {
+            Vector3 localAnglerVelocity = m_Body.transform.InverseTransformDirection(m_Body.angularVelocity).normalized * m_Body.angularVelocity.magnitude;
+
+            m_PrevPrevAnglerVDiff = m_PrevAnglerVDiff;
+            m_PrevAnglerVDiff = localAnglerVelocity - m_GoalAnglerV;
+            m_IntegralAnglerV += (m_PrevPrevAnglerVDiff + m_PrevAnglerVDiff) * 0.5f * Time.deltaTime;
+
+            Vector3 P = m_PrevAnglerVDiff * (m_AnglerV_Kp);
+            Vector3 I = m_IntegralAnglerV * (m_AnglerV_Ki);
+            Vector3 D = (m_AnglerV_Kd) * (m_PrevAnglerVDiff - m_PrevPrevAnglerVDiff) / Time.deltaTime;
+
+            Vector3 pid = -(P + I + D);
+
+            
+
+            //float angleForceX = Mathf.Sign(pid.x) * Mathf.Min(Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            float angleForceX = Mathf.Sign(pid.x) * Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass;
+            m_FrontForce = -angleForceX;
+            m_BackForce = angleForceX;
+
+            //float angleForceZ = Mathf.Sign(pid.z) * Mathf.Min(Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            float angleForceZ = Mathf.Sign(pid.z) * Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass;
+            m_LeftForce = -angleForceZ;
+            m_RightForce = angleForceZ;
+
+            //float angleForceY = Mathf.Sign(pid.y) * Mathf.Min(Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            float angleForceY = Mathf.Sign(pid.y) * Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass;
+            //body.AddRelativeTorque(Vector3.up * (angleForceY * yawForce));
+            m_RollTorque = angleForceY;
+
+            Debug.Log("UDRONE: TargetVelocity:(" + localAnglerVelocity.x + "," + localAnglerVelocity.y + "," + localAnglerVelocity.z + ")");
+        }
+
+        /// <summary>
+        /// ドローンの推力を発生させる
+        /// </summary>
+        void ApplyDroneForce()
+        {
+            var axleLen = m_ForcePointRadius * COS45;
+
+            var frontRight = transform.TransformPoint(new Vector3(axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, axleLen));
+            var frontLeft = transform.TransformPoint(new Vector3(-axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, axleLen));
+            var backRight = transform.TransformPoint(new Vector3(axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, -axleLen));
+            var backLeft = transform.TransformPoint(new Vector3(-axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, -axleLen));
+
+            var downDir = m_Body.transform.TransformDirection(Vector3.up);
+
+
+            Vector3 frontRightThrust = m_ForceRF * downDir;
+            Vector3 frontLeftThrust = m_ForceLF * downDir;
+            Vector3 backRightThrust = m_ForceRB * downDir;
+            Vector3 backLeftThrust = m_ForceLB * downDir;
+
+            m_Body.AddForceAtPosition(frontRightThrust, frontRight);
+            m_Body.AddForceAtPosition(frontLeftThrust, frontLeft);
+            m_Body.AddForceAtPosition(backRightThrust, backRight);
+            m_Body.AddForceAtPosition(backLeftThrust, backLeft);
+
+            switch (m_Mode)
+            {
+                case MODE_ANGLE:
+                    {
+                        m_Body.AddTorque(Vector3.up * (m_RollTorque * m_YawForce));
+                    }
+                    break;
+                case MODE_ACRO:
+                    {
+                        m_Body.AddRelativeTorque(Vector3.up * (m_RollTorque * m_YawForce));
+                    }
+                    break;
+            }
+
+        }
+
+        public bool GetIsArm()
+        {
+            return m_IsArm;
+        }
+
+        public void SetIsArm(bool flag)
+        {
+            m_IsArm = flag;
         }
 
         public void ChangeMode_Angle()
         {
-            mode = MODE_ANGLE;
+            m_Mode = MODE_ANGLE;
         }
 
         public void ChangeMode_Acro()
         {
-            mode = MODE_ACRO;
+            m_Mode = MODE_ACRO;
+        }
+
+        public int GetFlyingMode()
+        {
+            return m_Mode;
+        }
+
+        public void SetUseVRRate(bool flag)
+        {
+            m_UseVRRate = flag;
+        }
+
+        public void SetThrottleCenterHoveringMode(bool flag)
+        {
+            m_ThrottleCenterHovering = flag;
+        }
+
+        public void SetHightAdjustMode(bool flag)
+        {
+            m_HightAdjustMode = flag;
+        }
+
+        public void SetThrottle(float throttle)
+        {
+            m_Throttle = throttle;
+        }
+
+        public void SetRudder(float rudder)
+        {
+            m_Rudder = Mathf.Floor(rudder * 100.0f) / 100.0f;
+        }
+
+        public void SetElevator(float elevator)
+        {
+            m_Elevator = Mathf.Floor(elevator * 100.0f) / 100.0f;
+        }
+
+        public void SetAileron(float aileron)
+        {
+            m_Aileron = Mathf.Floor(aileron * 100.0f) / 100.0f;
+        }
+
+        public void SetMaxAngle(float angle)
+        {
+            m_MaxAngle = angle;
+        }
+
+        public float GetMaxAngle()
+        {
+            return m_MaxAngle;
         }
 
         public void ChangeMode()
         {
-            switch (mode)
+            switch (m_Mode)
             {
                 case MODE_ANGLE:
-                    mode = MODE_ACRO;
-                    if (Mode_ANGLE)
-                        Mode_ANGLE.SetActive(false);
-                    if (Mode_ACRO)
-                        Mode_ACRO.SetActive(true);
+                    m_Mode = MODE_ACRO;
+                    if (m_Mode_ANGLE)
+                        m_Mode_ANGLE.SetActive(false);
+                    if (m_Mode_ACRO)
+                        m_Mode_ACRO.SetActive(true);
                     break;
                 case MODE_ACRO:
-                    mode = MODE_ANGLE;
-                    if (Mode_ANGLE)
-                        Mode_ANGLE.SetActive(true);
-                    if (Mode_ACRO)
-                        Mode_ACRO.SetActive(false);
+                    m_Mode = MODE_ANGLE;
+                    if (m_Mode_ANGLE)
+                        m_Mode_ANGLE.SetActive(true);
+                    if (m_Mode_ACRO)
+                        m_Mode_ACRO.SetActive(false);
                     break;
             }
         }
@@ -488,8 +641,8 @@ namespace Kurotori.UDrone
 
         public override void OnDrop()
         {
-            if (controller != null)
-                controller.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ResetOwner");
+            if (m_Controller != null)
+                m_Controller.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ResetOwner");
         }
 
         public void ResetAll_All()
@@ -500,71 +653,73 @@ namespace Kurotori.UDrone
         public void ResetAll()
         {
 
-            body.isKinematic = true;
+            m_Body.isKinematic = true;
 
-            body.velocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
+            m_Body.velocity = Vector3.zero;
+            m_Body.angularVelocity = Vector3.zero;
 
-            if (resetPos)
+            if (m_ResetPos)
             {
-                body.position = resetPos.position;
-                body.rotation = resetPos.rotation;
+                m_Body.position = m_ResetPos.position;
+                m_Body.rotation = m_ResetPos.rotation;
             }
             else
             {
-                body.rotation = initRotation;
-                body.position = initPosition;
+                m_Body.rotation = m_InitRotation;
+                m_Body.position = m_InitPosition;
             }
 
-
-
-
-            prevPrevHightDiff = 0.0f;
-            prevHightDiff = 0.0f;
-            integralHight = 0.0f;
-
-            prevPrevAngleXDiff = 0.0f;
-            prevAngleXDiff = 0.0f;
-            integralAngleX = 0.0f;
-
-            prevPrevAngleZDiff = 0.0f;
-            prevAngleZDiff = 0.0f;
-            integralAngleZ = 0.0f;
-
-            force = 0;
-
-            frontForce = 0;
-            backForce = 0;
-            leftForce = 0;
-            rightForce = 0;
-
-            prevPrevAnglerYawDiff = 0.0f;
-            prevAnglerYawDiff = 0.0f;
-            integralAnglerYaw = 0.0f;
-
-            prevPrevAnglerVDiff = Vector3.zero;
-            prevAnglerVDiff = Vector3.zero;
-            integralAnglerV = Vector3.zero;
+            ResetPIDParameter();
 
             SendCustomEventDelayedFrames("ResetEnd", 5);
         }
 
+        void ResetPIDParameter()
+        {
+            m_PrevPrevHightDiff = 0.0f;
+            m_PrevHightDiff = 0.0f;
+            m_IntegralHight = 0.0f;
+
+            m_PrevPrevAngleXDiff = 0.0f;
+            m_PrevAngleXDiff = 0.0f;
+            m_IntegralAngleX = 0.0f;
+
+            m_PrevPrevAngleZDiff = 0.0f;
+            m_PrevAngleZDiff = 0.0f;
+            m_IntegralAngleZ = 0.0f;
+
+            m_Force = 0;
+
+            m_FrontForce = 0;
+            m_BackForce = 0;
+            m_LeftForce = 0;
+            m_RightForce = 0;
+
+            m_PrevPrevAnglerYawDiff = 0.0f;
+            m_PrevAnglerYawDiff = 0.0f;
+            m_IntegralAnglerYaw = 0.0f;
+
+            m_PrevPrevAnglerVDiff = Vector3.zero;
+            m_PrevAnglerVDiff = Vector3.zero;
+            m_IntegralAnglerV = Vector3.zero;
+        }
+
         public void ResetEnd()
         {
-            body.isKinematic = false;
+            m_Body.isKinematic = false;
         }
 
         private void LookUpdate()
         {
-            float engineMax = maxForce / body.mass;
-            float pitch = engineSpeed / Mathf.Max(engineMax, 0.0001f);
+            float engineMax = m_MaxThrottleForce;//maxForce / body.mass;
+            float pitch = m_EngineSpeed / Mathf.Max(engineMax, 0.0001f);
 
-            if (audioSource)
-                audioSource.pitch = Mathf.Min(pitch * pitchFactor, maxPitch);
+            if (m_AudioSource)
+                m_AudioSource.pitch = Mathf.Min(pitch * m_PitchFactor, m_MaxPitch);
 
             var RotationDir = Vector3.up;
 
-            switch (lookPropellerAxis)
+            switch (m_LookPropellerAxis)
             {
                 case 0: // X
                     RotationDir = Vector3.right;
@@ -577,141 +732,201 @@ namespace Kurotori.UDrone
                     break;
             }
 
-            frontRightFin.Rotate(RotationDir, -lookRotationSpeed * engineSpeed);
-            frontLeftFin.Rotate(RotationDir, -lookRotationSpeed * engineSpeed);
-            backRightFin.Rotate(RotationDir, lookRotationSpeed * engineSpeed);
-            backLeftFin.Rotate(RotationDir, lookRotationSpeed * engineSpeed);
+            m_FrontRightFin.Rotate(RotationDir, -m_LookRotationSpeed * m_EngineSpeed);
+            m_FrontLeftFin.Rotate(RotationDir, -m_LookRotationSpeed * m_EngineSpeed);
+            m_BackRightFin.Rotate(RotationDir, m_LookRotationSpeed * m_EngineSpeed);
+            m_BackLeftFin.Rotate(RotationDir, m_LookRotationSpeed * m_EngineSpeed);
         }
 
         private void InputUpdate()
         {
-#if UNITY_EDITOR
-            if (mode == MODE_ACRO)
+#if false //UNITY_EDITOR
+            if (m_Mode == MODE_ACRO)
             {
                 if (Input.GetKey(KeyCode.Space))
                 {
-                    throttle = 1;
+                    m_Throttle = 1;
                 }
                 else if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    throttle = -1;
+                    m_Throttle = -1;
                 }
                 else
                 {
-                    throttle = 0;
+                    m_Throttle = 0;
                 }
             }
             else
             {
                 if (Input.GetKey(KeyCode.Space))
                 {
-                    throttle = 1;
+                    m_Throttle = 1;
                 }
                 else if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    throttle = -1;
+                    m_Throttle = -1;
                 }
                 else
                 {
-                    throttle = 0;
+                    m_Throttle = 0;
                 }
             }
 
             if (Input.GetKey(KeyCode.E))
             {
-                rudder = 1;
+                m_Rudder = 1;
             }
             else if (Input.GetKey(KeyCode.Q))
             {
-                rudder = -1;
+                m_Rudder = -1;
             }
             else
             {
-                rudder = 0;
+                m_Rudder = 0;
             }
 
             if (Input.GetKey(KeyCode.W))
             {
-                elevator = 1;
+                m_Elevator = 1;
             }
             else if (Input.GetKey(KeyCode.S))
             {
-                elevator = -1;
+                m_Elevator = -1;
             }
             else
             {
-                elevator = 0;
+                m_Elevator = 0;
             }
 
             if (Input.GetKey(KeyCode.D))
             {
-                aileron = -1;
+                m_Aileron = -1;
             }
             else if (Input.GetKey(KeyCode.A))
             {
-                aileron = 1;
+                m_Aileron = 1;
             }
             else
             {
-                aileron = 0;
+                m_Aileron = 0;
             }
 #endif
 
-            switch (mode)
+            switch (m_Mode)
             {
                 case MODE_ANGLE:
                     {
-                        // 高度制御を行う
-                        targetVelocity = throttle * maxSpeedOnHightAdjust;
-
-                        // 角度制限あり
-                        goalAngleX = elevator * maxAngle;
-                        goalAngleZ = -aileron * maxAngle;
-
-                        // ヨー制御
-                        goalAnglerYaw = rudder * yawForce;
-
+                        InputAngleMode();
                     }
                     break;
                 case MODE_ACRO:
                     {
-                        // 高度制御なし
-
-                        // ホバリングに必要な出力は重力加速度×質量で決まる
-                        float hoveringForce = -Physics.gravity.y * body.mass * 0.25f;
-
-                        // 最大上昇出力
-                        float maxRiseForceOutput = hoveringForce * upForce;
-
-                        // -1 -> 0 は スロットル0からホバリング出力まで、 0 -> 1 は ホバリング出力から最大上昇出力に線形マッピングされる。
-                        throttleOutput = throttle;
-                        float throttleForce = throttleOutput > 0 ? Mathf.Lerp(hoveringForce, maxRiseForceOutput * throttleSensitivity, throttleOutput) : Mathf.Lerp(hoveringForce, 0, -throttleOutput);
-                        force = throttleForce;
-
-                        // 角度制御：角速度基準
-
-                        float goalAnglerVX = 0;
-                        float goalAnglerVZ = 0;
-                        float goalAnglerVY = 0;
-
-                        if (useVRRate)
-                        {
-                            goalAnglerVX = CalcBetaFlightRate(elevator, rcRateVR, superRateVR, rcExpoVR);//elevator;
-                            goalAnglerVZ = CalcBetaFlightRate(-aileron, rcRateVR, superRateVR, rcExpoVR);//-aileron * rotateSensitivity;
-                            goalAnglerVY = CalcBetaFlightRate(rudder, rcRateVR, superRateVR, rcExpoVR);//rudder * yawForce;
-                        }
-                        else
-                        {
-                            goalAnglerVX = CalcBetaFlightRate(elevator, rcRate, superRate, rcExpo);//elevator;
-                            goalAnglerVZ = CalcBetaFlightRate(-aileron, rcRate, superRate, rcExpo);//-aileron * rotateSensitivity;
-                            goalAnglerVY = CalcBetaFlightRate(rudder, rcRate, superRate, rcExpo);//rudder * yawForce;
-                        }
-                        goalAnglerV = new Vector3(goalAnglerVX, goalAnglerVY, goalAnglerVZ);
+                        InputAcroMode();
                     }
                     break;
             }
 
+        }
 
+        private float ThrottleCenterHoveringMapping(float maxForce)
+        {
+            // ホバリングに必要な出力は重力加速度×質量で決まる
+            float hoveringForce = -Physics.gravity.y * m_Body.mass * 0.25f;
+            // -1 -> 0 は スロットル0からホバリング出力まで、 0 -> 1 は ホバリング出力から最大上昇出力に線形マッピングされる。
+            return m_Throttle > 0 ? Mathf.Lerp(hoveringForce, maxForce, m_Throttle) : Mathf.Lerp(hoveringForce, 0, -m_Throttle);
+        }
+
+        private void InputAngleMode()
+        {
+            m_TargetVelocity = m_Throttle * m_MaxSpeedOnHightAdjust;
+
+            // 角度制限あり
+            m_GoalAngleX = m_Elevator * m_MaxAngle;
+            m_GoalAngleZ = -m_Aileron * m_MaxAngle;
+
+            // ヨー制御
+            m_GoalAnglerYaw = m_Rudder * m_YawForce;
+
+            if (!m_HightAdjustMode)
+            {
+                // 最大上昇出力
+                float maxRiseForceOutput = m_MaxThrottleForce; /*hoveringForce * upForce;*/
+
+                float throttleForce = 0;
+                if (m_ThrottleCenterHovering)
+                {
+                    throttleForce = ThrottleCenterHoveringMapping(maxRiseForceOutput);
+                }
+                else
+                {
+                    // 0から最大出力に線形マッピング
+                    throttleForce = Mathf.Lerp(0, maxRiseForceOutput, (m_Throttle * 0.5f + 0.5f));
+                }
+                m_Force = throttleForce;
+            }
+        }
+
+        private void InputAcroMode()
+        {
+            // 最大上昇出力
+            {
+                float maxRiseForceOutput = m_MaxThrottleForce;
+
+                float throttleForce = 0;
+                if (m_ThrottleCenterHovering)
+                {
+                    throttleForce = ThrottleCenterHoveringMapping(maxRiseForceOutput);
+                }
+                else
+                {
+                    // 0から最大出力に線形マッピング
+                    throttleForce = Mathf.Lerp(0, maxRiseForceOutput, (m_Throttle * 0.5f + 0.5f));
+                }
+                m_Force = throttleForce;
+            }
+
+            // 角度制御：角速度基準
+            {
+                float goalAnglerVX = 0;
+                float goalAnglerVZ = 0;
+                float goalAnglerVY = 0;
+
+                //Debug.Log("UDRONE: Input: E:" + m_Elevator + " A:" + m_Aileron + " R:" + m_Rudder);
+
+                if (m_UseVRRate)
+                {
+                    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//elevator;
+                    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//-aileron * rotateSensitivity;
+                    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//rudder * yawForce;
+                }
+                else
+                {
+                    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRate, m_SuperRate, m_RcExpo);//elevator;
+                    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRate, m_SuperRate, m_RcExpo);//-aileron * rotateSensitivity;
+                    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRate, m_SuperRate, m_RcExpo);//rudder * yawForce;
+                }
+                m_GoalAnglerV = new Vector3(goalAnglerVX, goalAnglerVY, goalAnglerVZ);
+            }
+        }
+
+        /// <summary>
+        /// 逆さまになったときにその場で姿勢を戻すコマンド
+        /// </summary>
+        public void FlipOver()
+        {
+            Debug.Log("FlipOver");
+            // PIDをリセット
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(ResetPIDParameter));
+
+            // 機体の状態を変更
+            m_Body.isKinematic = true;
+
+            m_Body.velocity = Vector3.zero;
+            m_Body.angularVelocity = Vector3.zero;
+
+            m_Body.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(m_Body.transform.forward, Vector3.up));
+
+            SendCustomEventDelayedFrames(nameof(ResetEnd), 5);
         }
 
         /// <summary>
@@ -739,48 +954,158 @@ namespace Kurotori.UDrone
             return rate * sign;
         }
 
+        /// <summary>
+        /// 推力減衰：対気速度による推力減少の計算【未使用】
+        /// </summary>
+        private Vector3 CalcThrustDamping(Vector3 thrust)
+        {
+            Vector3 result = Vector3.zero;
+
+            // 推力がゼロなら計算しない
+            if (Mathf.Approximately(thrust.sqrMagnitude,0))
+            {
+                return result;
+            }
+
+            result = thrust;
+            
+            // 推力方向への対気速度を計算
+            float airSpeed = Vector3.Dot(m_Body.velocity, thrust) / thrust.sqrMagnitude;
+
+            Vector3 airVelocity = airSpeed * thrust * m_PropellarAirSpeedRate;
+
+            //Debug.Log(airVelocity);
+
+            if (airSpeed > 0)
+            {
+                // 推力方向と対気速度が同じ向きの場合
+                // 推力が減少する
+                result = result - airVelocity;
+            }
+            else
+            {
+                // 推力方向と対気速度が逆向きの場合
+                // 推力が上昇する？
+                //result = result - airVelocity;
+            }
+
+            return result;
+
+        }
+
+        /// <summary>
+        /// プロペラ抵抗の計算
+        /// </summary>
+        private void CalcPropDrop(Vector3 propDir)
+        {
+            if(Mathf.Approximately(m_Force, 0)) return;
+
+            float moveSpeed = Vector3.Dot(m_Body.velocity, propDir);
+
+            var propDrag = Mathf.Min(m_TopSpeed - moveSpeed, 0.0f);
+
+            m_Body.AddForce(m_Body.velocity.normalized * propDrag);
+
+        }
+
+        /// <summary>
+        /// 高度維持PID処理
+        /// </summary>
         private void HightAdjustPID()
         {
 
             {
-                prevPrevHightDiff = prevHightDiff;
-                prevHightDiff = body.velocity.y - targetVelocity;
-                integralHight += (prevPrevHightDiff + prevHightDiff) * 0.5f * Time.deltaTime;
+                m_PrevPrevHightDiff = m_PrevHightDiff;
+                m_PrevHightDiff = m_Body.velocity.y - m_TargetVelocity;
+                m_IntegralHight += (m_PrevPrevHightDiff + m_PrevHightDiff) * 0.5f * Time.deltaTime;
 
-                float P = prevHightDiff * (hight_Kp * body.mass);
-                float I = integralHight * (hight_Ki * body.mass);
-                float D = (hight_Kd * body.mass) * (prevHightDiff - prevPrevHightDiff) / Time.deltaTime;
+                float P = m_PrevHightDiff * (m_Hight_Kp * m_Body.mass);
+                float I = m_IntegralHight * (m_Hight_Ki * m_Body.mass);
+                float D = (m_Hight_Kd * m_Body.mass) * (m_PrevHightDiff - m_PrevPrevHightDiff) / Time.deltaTime;
 
                 float hightAdjustForce = P + I + D;
 
                 var adjustForce = -hightAdjustForce;
 
-                adjustForce = Mathf.Abs(adjustForce) > (brakeMax * body.mass) ? Mathf.Sign(adjustForce) * (brakeMax * body.mass) : adjustForce;
+                //adjustForce = Mathf.Abs(adjustForce) > (m_BrakeMax * m_Body.mass) ? Mathf.Sign(adjustForce) * (m_BrakeMax * m_Body.mass) : adjustForce;
 
-                force = Mathf.Max(force + adjustForce, 0.0f);
+                m_Force = Mathf.Max(m_Force + adjustForce, 0.0f);
 
             }
+        }
+
+        /// <summary>
+        /// ドローン設定を適用する
+        /// </summary>
+        //public void ApplyDroneSetting()
+        //{
+
+        //    if(m_DroneSetting)
+        //    {
+        //        m_RcRate = m_DroneSetting.m_rcRate;
+        //        m_SuperRate = m_DroneSetting.m_spRate;
+        //        m_RcExpo = m_DroneSetting.m_expo;
+
+        //        m_AnglerV_Kp = m_DroneSetting.m_acro_p;
+        //        m_AnglerV_Ki = m_DroneSetting.m_acro_i;
+        //        m_AnglerV_Kd = m_DroneSetting.m_acro_d;
+        //    }
+        //}
+
+        public void ApplyDroneRate(float rcRate, float spRate, float expo)
+        {
+            m_RcRate = rcRate;
+            m_SuperRate = spRate;
+            m_RcExpo = expo;
+        }
+
+        public void ApplyAngluerVPID(float p, float i, float d)
+        {
+            m_AnglerV_Kp = p;
+            m_AnglerV_Ki = i;
+            m_AnglerV_Kd = d;
+        }
+
+        public void ApplyAnglePID(float p, float i, float d)
+        {
+            m_Angle_Kp = p;
+            m_Angle_Ki = i;
+            m_Angle_Kd = d;
+
+            Debug.Log(string.Format("UDRONE: Apply AnglePID ({0},{1},{2})", p, i, d));
+        }
+
+        public Rigidbody GetRigidbody()
+        {
+            return m_Body;
+        }
+
+
+        public void SetDroneSoundVolume(float volume)
+        {
+            m_AudioSource.volume = volume;
         }
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (body == null)
+            if (m_Body == null)
             {
-                body = gameObject.GetComponent<Rigidbody>();
+                m_Body = gameObject.GetComponent<Rigidbody>();
             }
-            var center = body.worldCenterOfMass;
+            var center = m_Body.worldCenterOfMass;
 
 
             // RootOnly update will only copy the data for this behaviour from Udon to the proxy
-            this.UpdateProxy(ProxySerializationPolicy.RootOnly);
+            //this.UpdateProxy(ProxySerializationPolicy.RootOnly);
+            //UdonSharpEditorUtility.CopyUdonToProxy(this);
 
-            var axleLen = forcePointRadius * COS45;
+            var axleLen = m_ForcePointRadius * COS45;
 
-            var frontRight = transform.TransformPoint(new Vector3(axleLen, forcePointHeight + body.centerOfMass.y, axleLen));
-            var frontLeft = transform.TransformPoint(new Vector3(-axleLen, forcePointHeight + body.centerOfMass.y, axleLen));
-            var backRight = transform.TransformPoint(new Vector3(axleLen, forcePointHeight + body.centerOfMass.y, -axleLen));
-            var backLeft = transform.TransformPoint(new Vector3(-axleLen, forcePointHeight + body.centerOfMass.y, -axleLen));
+            var frontRight = transform.TransformPoint(new Vector3(axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, axleLen));
+            var frontLeft = transform.TransformPoint(new Vector3(-axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, axleLen));
+            var backRight = transform.TransformPoint(new Vector3(axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, -axleLen));
+            var backLeft = transform.TransformPoint(new Vector3(-axleLen, m_ForcePointHeight + m_Body.centerOfMass.y, -axleLen));
 
             Gizmos.color = Color.red;
             Gizmos.DrawLine(center, frontRight);
@@ -789,15 +1114,15 @@ namespace Kurotori.UDrone
             Gizmos.DrawLine(center, backRight);
             Gizmos.DrawLine(center, backLeft);
 
-            var downDir = body.transform.TransformDirection(Vector3.down);
-            var frontDir = body.transform.TransformDirection(Vector3.forward);
-            var rightDir = body.transform.TransformDirection(Vector3.right);
+            var downDir = m_Body.transform.TransformDirection(Vector3.down);
+            var frontDir = m_Body.transform.TransformDirection(Vector3.forward);
+            var rightDir = m_Body.transform.TransformDirection(Vector3.right);
 
             Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(frontRight, frontRight + downDir * forceRF);
-            Gizmos.DrawLine(frontLeft, frontLeft + downDir * forceLF);
-            Gizmos.DrawLine(backRight, backRight + downDir * forceRB);
-            Gizmos.DrawLine(backLeft, backLeft + downDir * forceLB);
+            Gizmos.DrawLine(frontRight, frontRight + downDir * m_ForceRF);
+            Gizmos.DrawLine(frontLeft, frontLeft + downDir * m_ForceLF);
+            Gizmos.DrawLine(backRight, backRight + downDir * m_ForceRB);
+            Gizmos.DrawLine(backLeft, backLeft + downDir * m_ForceLB);
 
             //Handles.color = Color.green;
             //Handles.DrawWireArc(frontRight, -downDir, frontDir, 270, 0.3f);
@@ -812,7 +1137,7 @@ namespace Kurotori.UDrone
 
             Vector3 propellerUpVector = Vector3.zero;
             Vector3 propellerForwardVector = Vector3.zero;
-            switch (lookPropellerAxis)
+            switch (m_LookPropellerAxis)
             {
                 case 0: // X
                     propellerUpVector = Vector3.right;
@@ -828,21 +1153,21 @@ namespace Kurotori.UDrone
                     break;
             }
 
-            if (frontRightFin)
+            if (m_FrontRightFin)
             {
-                DrawCircleArrow(frontRightFin.position, frontRightFin.TransformDirection(propellerUpVector), frontRightFin.TransformDirection(propellerForwardVector), arrowRadius, true, Color.green);
+                DrawCircleArrow(m_FrontRightFin.position, m_FrontRightFin.TransformDirection(propellerUpVector), m_FrontRightFin.TransformDirection(propellerForwardVector), arrowRadius, true, Color.green);
             }
-            if (frontLeftFin)
+            if (m_FrontLeftFin)
             {
-                DrawCircleArrow(frontLeftFin.position, frontLeftFin.TransformDirection(propellerUpVector), frontLeftFin.TransformDirection(propellerForwardVector), arrowRadius, true, Color.green);
+                DrawCircleArrow(m_FrontLeftFin.position, m_FrontLeftFin.TransformDirection(propellerUpVector), m_FrontLeftFin.TransformDirection(propellerForwardVector), arrowRadius, true, Color.green);
             }
-            if (backRightFin)
+            if (m_BackRightFin)
             {
-                DrawCircleArrow(backRightFin.position, frontRightFin.TransformDirection(propellerUpVector), backRightFin.TransformDirection(propellerForwardVector), arrowRadius, false, Color.green);
+                DrawCircleArrow(m_BackRightFin.position, m_FrontRightFin.TransformDirection(propellerUpVector), m_BackRightFin.TransformDirection(propellerForwardVector), arrowRadius, false, Color.green);
             }
-            if (backLeftFin)
+            if (m_BackLeftFin)
             {
-                DrawCircleArrow(backLeftFin.position, frontRightFin.TransformDirection(propellerUpVector), backLeftFin.TransformDirection(propellerForwardVector), arrowRadius, false, Color.green);
+                DrawCircleArrow(m_BackLeftFin.position, m_FrontRightFin.TransformDirection(propellerUpVector), m_BackLeftFin.TransformDirection(propellerForwardVector), arrowRadius, false, Color.green);
             }
         }
 

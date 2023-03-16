@@ -16,10 +16,10 @@ public class SpeedMeter : UdonSharpBehaviour
 
     [SerializeField]
     [Tooltip("水平速度の表示用Text")]
-    TextMeshProUGUI textHorizontal;
+    TextMeshProUGUI[] textHorizontal;
     [SerializeField]
     [Tooltip("垂直速度の表示用Text")]
-    TextMeshProUGUI textVertical;
+    TextMeshProUGUI[] textVertical;
 
     private void Update()
     {
@@ -29,7 +29,15 @@ public class SpeedMeter : UdonSharpBehaviour
         horizontalVelocity = horizontalVelocity * 60.0f * 60.0f / 1000.0f;
         verticalVelocity = verticalVelocity * 60.0f * 60.0f / 1000.0f;
 
-        textHorizontal.text = string.Format("{0:000.0} km/h", horizontalVelocity);
-        textVertical.text = string.Format("{0:000.0} km/h", verticalVelocity);
+        for(int i = 0; i < textHorizontal.Length; ++i)
+        {
+            textHorizontal[i].text = string.Format("{0:000.0} km/h", horizontalVelocity);
+        }
+        for (int i = 0; i < textVertical.Length; ++i)
+        {
+            textVertical[i].text = string.Format("{0:000.0} km/h", verticalVelocity);
+        }
+        
+        
     }
 }

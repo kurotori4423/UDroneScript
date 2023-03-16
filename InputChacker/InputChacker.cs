@@ -73,7 +73,7 @@ namespace Kurotori.UDrone
 
             for (int i = 0; i < stickInputs.Length; ++i)
             {
-                sticks[i] = VRCInstantiate(prefab);
+                sticks[i] = Instantiate(prefab);
                 sticks[i].transform.SetParent(parent);
                 sticks[i].transform.localScale = Vector3.one;
                 sticks[i].transform.localPosition = Vector3.zero;
@@ -102,12 +102,14 @@ namespace Kurotori.UDrone
 
         private void Update()
         {
+#if !UNITY_EDITOR
             for (int i = 0; i < stickInputs.Length; ++i)
             {
                 var value = Input.GetAxisRaw(stickInputs[i]);
                 stickValues[i].value = value;
                 valueLabels[i].text = value.ToString();
             }
+#endif
         }
     }
 }

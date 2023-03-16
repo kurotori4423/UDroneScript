@@ -25,12 +25,15 @@ namespace Kurotori.UDrone
 
         public TextMeshProUGUI text;
 
+        private RenderTexture renderTexture;
+
         int currentCam = 0;
 
         void Start()
         {
             text.text = currentCam.ToString();
             TurnOff();
+
         }
 
         void SetCamera()
@@ -50,7 +53,6 @@ namespace Kurotori.UDrone
             {
                 obj.SetActive(true);
             }
-
             SetCamera();
 
         }

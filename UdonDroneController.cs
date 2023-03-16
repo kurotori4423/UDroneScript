@@ -9,11 +9,11 @@ using TMPro;
 
 namespace Kurotori.UDrone
 {
-
-    public class UdonDroneController : UdonSharpBehaviour
+    /// <summary>
+    /// ドローンのコントローラー
+    /// </summary>
+    public class UdonDroneController : IDroneController
     {
-        UdonDroneCore drone;
-
         float tmpRunSpeed;
         float tmpStrafeSpeed;
         float tmpWalkSpeed;
@@ -25,7 +25,7 @@ namespace Kurotori.UDrone
         [Header("カメラ")]
         [SerializeField]
         [Tooltip("機体側のカメラ位置")]
-        Transform droneCamRig;
+        public Transform droneCamRig;
 
         [SerializeField]
         [Tooltip("機体カメラの回転軸")]
@@ -33,7 +33,10 @@ namespace Kurotori.UDrone
 
         [SerializeField]
         [Tooltip("カメラ本体")]
-        Transform droneCam;
+        DroneShareCamera droneCam;
+
+        [SerializeField]
+        UdonDroneManualSyncVariables syncVariables;
 
         [SerializeField]
         bool mode1 = true;
@@ -81,6 +84,14 @@ namespace Kurotori.UDrone
         Toggle useCustomInputToggle;
 
         [SerializeField]
+        [Tooltip("高度維持を有効にするかのトグルスイッチ")]
+        Toggle AutoAltitudeControlToggle;
+
+        [SerializeField]
+        [Tooltip("スロットルセンターホバリングを有効にするかのトグルスイッチ")]
+        Toggle ThrottleCenterHoveringToggle;
+
+        [SerializeField]
         [Tooltip("カメラ回転角のスライダー")]
         Slider cameraRotateSlider;
         [SerializeField]
@@ -88,7 +99,6 @@ namespace Kurotori.UDrone
         TextMeshProUGUI cameraAngleLabel;
 
         [Header("入力設定")]
-
         [SerializeField]
         bool useCustomInput = false;
 
@@ -139,6 +149,9 @@ namespace Kurotori.UDrone
 
         void Start()
         {
+            // マニュアル同期変数用コントローラーを設定
+            syncVariables.droneController = this;
+
             controlling = false;
             droneCamDisplay.SetActive(false);
 
@@ -215,6 +228,8 @@ namespace Kurotori.UDrone
                 }
             }
 
+            
+
             CameraAngleChange();
 
         }
@@ -252,9 +267,9 @@ namespace Kurotori.UDrone
             station.UseStation(Networking.LocalPlayer);
 
             // オーナー権を設定
-            if (drone && !Networking.LocalPlayer.IsOwner(drone.gameObject))
+            if (droneCore && !Networking.LocalPlayer.IsOwner(droneCore.gameObject))
             {
-                Networking.SetOwner(Networking.LocalPlayer, drone.gameObject);
+                Networking.SetOwner(Networking.LocalPlayer, droneCore.gameObject);
             }
 
             DisplayOpen();
@@ -269,9 +284,9 @@ namespace Kurotori.UDrone
             // 他プレイヤーへ非表示指示
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(HidePickup));
 
-            if (drone)
+            if (droneCore)
             {
-                drone.isArm = true;
+                droneCore.SetIsArm(true);
             }
         }
 
@@ -321,9 +336,9 @@ namespace Kurotori.UDrone
             pickupCollider.enabled = true;
             controlling = false;
 
-            if (drone)
+            if (droneCore)
             {
-                drone.isArm = false;
+                droneCore.SetIsArm(false);
             }
 
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(ShowPickup));
@@ -354,6 +369,8 @@ namespace Kurotori.UDrone
         {
             droneCamDisplay.SetActive(true);
 
+            CameraAngleChange();
+
             if (droneFPVDisplayForVR)
             {
                 droneFPVDisplayForVR.SetActive(true);
@@ -362,9 +379,10 @@ namespace Kurotori.UDrone
             // ドローンカメラを設定する
             if (droneCam != null && droneCamRig != null)
             {
-                droneCam.SetParent(droneCamRig);
-                droneCam.localPosition = Vector3.zero;
-                droneCam.localRotation = Quaternion.identity;
+                droneCam.transform.SetParent(droneCamRig);
+                droneCam.transform.localPosition = Vector3.zero;
+                droneCam.transform.localRotation = Quaternion.identity;
+                droneCam.AttachDrone(droneCore.GetRigidbody());
             }
             else
             {
@@ -387,38 +405,64 @@ namespace Kurotori.UDrone
             }
         }
 
+        public void ToggleAutoAltitudeControl()
+        {
+            if (AutoAltitudeControlToggle == null) return;
+
+
+            droneCore.SetHightAdjustMode(AutoAltitudeControlToggle.isOn);
+        }
+
+        public void ToggleThrottleCenterHovering()
+        {
+            if (ThrottleCenterHoveringToggle == null) return;
+
+            droneCore.SetHightAdjustMode(ThrottleCenterHoveringToggle.isOn);
+        }
+
         public void UseCustomInputON()
         {
             useCustomInput = true;
-            if (drone)
-                drone.useVRRate = !useCustomInput;
+            if (droneCore)
+                droneCore.SetUseVRRate(!useCustomInput);
         }
 
         public void UseCustomInputOFF()
         {
             useCustomInput = false;
-            if (drone)
-                drone.useVRRate = !useCustomInput;
+            if (droneCore)
+                droneCore.SetUseVRRate(!useCustomInput);
         }
 
         public void ToggleUseCustomInput()
         {
             useCustomInput = !useCustomInput;
-            if (drone)
-                drone.useVRRate = !useCustomInput;
+            if (droneCore)
+                droneCore.SetUseVRRate(!useCustomInput);
         }
 
         public void ResetOwner()
         {
-            if (!Networking.LocalPlayer.IsOwner(drone.gameObject))
-                Networking.SetOwner(Networking.LocalPlayer, drone.gameObject);
+            if (!Networking.LocalPlayer.IsOwner(droneCore.gameObject))
+                Networking.SetOwner(Networking.LocalPlayer, droneCore.gameObject);
         }
 
-        public void SetDrone(UdonDroneCore droneCore)
+        public override void SetDrone(UdonDroneCore droneCore)
         {
-            drone = droneCore;
+            this.droneCore = droneCore;
 
-            drone.useVRRate = !useCustomInput;
+            this.droneCore.SetUseVRRate(!useCustomInput);
+
+            if (AutoAltitudeControlToggle)
+            {
+                this.droneCore.SetHightAdjustMode(AutoAltitudeControlToggle.isOn);
+            }
+
+            if(ThrottleCenterHoveringToggle)
+            {
+                this.droneCore.SetThrottleCenterHoveringMode(ThrottleCenterHoveringToggle.isOn);
+            }
+
             Debug.Log("Set Drone");
         }
 
@@ -446,18 +490,18 @@ namespace Kurotori.UDrone
 
         public void ChangeFlyMode()
         {
-            if (drone)
+            if (droneCore)
             {
                 switch (flymode)
                 {
                     case MODE_ANGLE:
                         flymode = MODE_ACRO;
-                        drone.ChangeMode_Acro();
+                        droneCore.ChangeMode_Acro();
                         flymodeLabel.text = "ACRO";
                         break;
                     case MODE_ACRO:
                         flymode = MODE_ANGLE;
-                        drone.ChangeMode_Angle();
+                        droneCore.ChangeMode_Angle();
                         flymodeLabel.text = "ANGLE";
                         break;
                 }
@@ -477,17 +521,37 @@ namespace Kurotori.UDrone
         {
             if (cameraRotateSlider)
             {
-                var angle = Mathf.Lerp(0, 90, cameraRotateSlider.value);
-                cameraAngleLabel.text = string.Format("{0:0}°", angle);
-                droneCamRotateRig.localRotation = Quaternion.AngleAxis(angle, Vector3.right);
+                if (Networking.LocalPlayer != null && Networking.LocalPlayer.IsOwner(gameObject))
+                {
+                    var angle = Mathf.Lerp(0, 90, cameraRotateSlider.value);
+                    cameraAngleLabel.text = string.Format("{0:0}°", angle);
+                    droneCamRotateRig.localRotation = Quaternion.AngleAxis(angle, Vector3.right);
+
+                    syncVariables.SetCameraAngles(angle);
+                }
+
             }
+        }
+
+        public void SetCameraAngleGlobal()
+        {
+            Debug.Log("Set Global Camera Angle :" + syncVariables.CameraAngles.ToString());
+            droneCamRotateRig.localRotation = Quaternion.AngleAxis(syncVariables.CameraAngles, Vector3.right);
         }
 
         public void ResetDrone()
         {
-            if (drone)
+            if (droneCore)
             {
-                drone.ResetAll_All();
+                droneCore.ResetAll_All();
+            }
+        }
+
+        public void FlipOverDrone()
+        {
+            if(droneCore)
+            {
+                droneCore.FlipOver();
             }
         }
 
@@ -501,21 +565,17 @@ namespace Kurotori.UDrone
 
         public override void OnPlayerJoined(VRCPlayerApi player)
         {
-            if(player.isLocal)
+            // コントロール状態なら全体へ通知する
+            if(controlling)
             {
-                if(station.seated)
-                {
-                    HidePickup();
-                }
-                else
-                {
-                    ShowPickup();
-                }
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(HidePickup));
             }
         }
 
         private void Update()
         {
+            if (Networking.LocalPlayer == null) return;
+
             if (controlling)
             {
                 if (Networking.LocalPlayer.IsUserInVR())
@@ -545,24 +605,37 @@ namespace Kurotori.UDrone
                 {
                     ResetDrone();
                 }
+
+                if(Input.GetKeyDown(KeyCode.O))
+                {
+                    FlipOverDrone();
+                }
             }
+
+            
+            //if (!Networking.LocalPlayer.IsOwner(gameObject))
+            //{
+            //    // カメラの状態をグローバル状態にする
+            //    Debug.Log("Set Global Camera Angle :" + globalCamAngle.ToString());
+            //    droneCamRotateRig.localRotation = Quaternion.AngleAxis(globalCamAngle, Vector3.right);
+            //}
         }
 
         void CustomControl()
         {
             if (mode1)
             {
-                drone.rudder = Input.GetAxis(customLHorizontal) * (invertLH ? -1 : 1);
-                drone.elevator = Input.GetAxis(customLVertical) * (invertLV ? -1 : 1);
-                drone.aileron = Input.GetAxis(customRHorizontal) * (invertRH ? -1 : 1);
-                drone.throttle = Input.GetAxis(customRVertical) * (invertRV ? -1 : 1);
+                droneCore.SetRudder(Input.GetAxis(customLHorizontal) * (invertLH ? -1 : 1));
+                droneCore.SetElevator(Input.GetAxis(customLVertical) * (invertLV ? -1 : 1));
+                droneCore.SetAileron(Input.GetAxis(customRHorizontal) * (invertRH ? -1 : 1));
+                droneCore.SetThrottle(Input.GetAxis(customRVertical) * (invertRV ? -1 : 1));
             }
             else
             {
-                drone.rudder = Input.GetAxis(customLHorizontal) * (invertLH ? -1 : 1);
-                drone.throttle = Input.GetAxis(customLVertical) * (invertLV ? -1 : 1);
-                drone.aileron = Input.GetAxis(customRHorizontal) * (invertRH ? -1 : 1);
-                drone.elevator = Input.GetAxis(customRVertical) * (invertRV ? -1 : 1);
+                droneCore.SetRudder(Input.GetAxis(customLHorizontal) * (invertLH ? -1 : 1));
+                droneCore.SetThrottle(Input.GetAxis(customLVertical) * (invertLV ? -1 : 1));
+                droneCore.SetAileron(Input.GetAxis(customRHorizontal) * (invertRH ? -1 : 1));
+                droneCore.SetElevator(Input.GetAxis(customRVertical) * (invertRV ? -1 : 1));
             }
         }
 
@@ -570,17 +643,17 @@ namespace Kurotori.UDrone
         {
             if (mode1)
             {
-                drone.rudder = Input.GetAxis(vrLHorizontal);
-                drone.elevator = Input.GetAxis(vrLVertical);
-                drone.aileron = Input.GetAxis(vrRHorizontal);
-                drone.throttle = Input.GetAxis(vrRVertical);
+                droneCore.SetRudder(Input.GetAxis(vrLHorizontal));
+                droneCore.SetElevator(Input.GetAxis(vrLVertical));
+                droneCore.SetAileron(Input.GetAxis(vrRHorizontal));
+                droneCore.SetThrottle(Input.GetAxis(vrRVertical));
             }
             else
             {
-                drone.rudder = Input.GetAxis(vrLHorizontal);
-                drone.throttle = Input.GetAxis(vrLVertical);
-                drone.aileron = Input.GetAxis(vrRHorizontal);
-                drone.elevator = Input.GetAxis(vrRVertical);
+                droneCore.SetRudder(Input.GetAxis(vrLHorizontal));
+                droneCore.SetThrottle(Input.GetAxis(vrLVertical));
+                droneCore.SetAileron(Input.GetAxis(vrRHorizontal));
+                droneCore.SetElevator(Input.GetAxis(vrRVertical));
             }
         }
 
@@ -588,17 +661,17 @@ namespace Kurotori.UDrone
         {
             if (mode1)
             {
-                drone.rudder = KeyboardAxis(KeyCode.A, KeyCode.D, true);
-                drone.elevator = KeyboardAxis(KeyCode.S, KeyCode.W, true);
-                drone.aileron = KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true);
-                drone.throttle = KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true);
+                droneCore.SetRudder(KeyboardAxis(KeyCode.A, KeyCode.D, true));
+                droneCore.SetElevator(KeyboardAxis(KeyCode.S, KeyCode.W, true));
+                droneCore.SetAileron(KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true));
+                droneCore.SetThrottle(KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true));
             }
             else
             {
-                drone.rudder = KeyboardAxis(KeyCode.A, KeyCode.D, true);
-                drone.throttle = KeyboardAxis(KeyCode.S, KeyCode.W, true);
-                drone.aileron = KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true);
-                drone.elevator = KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true);
+                droneCore.SetRudder(KeyboardAxis(KeyCode.A, KeyCode.D, true));
+                droneCore.SetThrottle(KeyboardAxis(KeyCode.S, KeyCode.W, true));
+                droneCore.SetAileron(KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true));
+                droneCore.SetElevator(KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true));
             }
         }
 
@@ -606,24 +679,24 @@ namespace Kurotori.UDrone
         {
             if (mode1)
             {
-                drone.rudder = KeyboardAxis(KeyCode.A, KeyCode.D, true);
-                drone.elevator = KeyboardAxis(KeyCode.S, KeyCode.W, true);
-                drone.aileron = KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true);
-                drone.throttle = KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, false);
+                droneCore.SetRudder(KeyboardAxis(KeyCode.A, KeyCode.D, true));
+                droneCore.SetElevator(KeyboardAxis(KeyCode.S, KeyCode.W, true));
+                droneCore.SetAileron(KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true));
+                droneCore.SetThrottle(KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, false));
             }
             else
             {
-                drone.rudder = KeyboardAxis(KeyCode.A, KeyCode.D, true);
-                drone.throttle = KeyboardAxis(KeyCode.S, KeyCode.W, false);
-                drone.aileron = KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true);
-                drone.elevator = KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true);
+                droneCore.SetRudder(KeyboardAxis(KeyCode.A, KeyCode.D, true));
+                droneCore.SetThrottle(KeyboardAxis(KeyCode.S, KeyCode.W, false));
+                droneCore.SetAileron(KeyboardAxis(KeyCode.LeftArrow, KeyCode.RightArrow, true));
+                droneCore.SetElevator(KeyboardAxis(KeyCode.DownArrow, KeyCode.UpArrow, true));
             }
         }
 
         void DesktopControl()
         {
             // キー入力操作
-            switch (drone.mode)
+            switch (droneCore.GetFlyingMode())
             {
                 case MODE_ANGLE:
                     {
@@ -725,7 +798,7 @@ namespace Kurotori.UDrone
             invertRV = false;
         }
 
-        #region SetCustomInput
+#region SetCustomInput
 
         // Joy1 Axis 1
 
@@ -1183,8 +1256,43 @@ namespace Kurotori.UDrone
             customRVertical = "Oculus_GearVR_RThumbstickY";
         }
 
+        // Oculus_GearVR_DpadX
+        public void SetLH_Oculus_GearVR_DpadX()
+        {
+            customLHorizontal = "Oculus_GearVR_DpadX";
+        }
+        public void SetLV_Oculus_GearVR_DpadX()
+        {
+            customLVertical = "Oculus_GearVR_DpadX";
+        }
+        public void SetRH_Oculus_GearVR_DpadX()
+        {
+            customRHorizontal = "Oculus_GearVR_DpadX";
+        }
+        public void SetRV_Oculus_GearVR_DpadX()
+        {
+            customRVertical = "Oculus_GearVR_DpadX";
+        }
 
-        #endregion
+        // Oculus_GearVR_DpadY
+        public void SetLH_Oculus_GearVR_DpadY()
+        {
+            customLHorizontal = "Oculus_GearVR_DpadY";
+        }
+        public void SetLV_Oculus_GearVR_DpadY()
+        {
+            customLVertical = "Oculus_GearVR_DpadY";
+        }
+        public void SetRH_Oculus_GearVR_DpadY()
+        {
+            customRHorizontal = "Oculus_GearVR_DpadY";
+        }
+        public void SetRV_Oculus_GearVR_DpadY()
+        {
+            customRVertical = "Oculus_GearVR_DpadY";
+        }
+
+#endregion
 
     }
 }
