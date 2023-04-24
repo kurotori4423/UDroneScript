@@ -27,6 +27,10 @@ namespace Kurotori.UDrone
 
         private RenderTexture renderTexture;
 
+        public bool isVirtualCameraMode;
+
+        public Transform targetObject;
+
         int currentCam = 0;
 
         void Start()
@@ -38,9 +42,18 @@ namespace Kurotori.UDrone
 
         void SetCamera()
         {
-            droneCam.SetParent(droneCameraRigs[currentCam].transform);
-            droneCam.localPosition = Vector3.zero;
-            droneCam.localRotation = Quaternion.identity;
+            if (isVirtualCameraMode)
+            {
+                targetObject.SetParent(droneCameraRigs[currentCam].transform);
+                targetObject.localPosition = Vector3.zero;
+                targetObject.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                droneCam.SetParent(droneCameraRigs[currentCam].transform);
+                droneCam.localPosition = Vector3.zero;
+                droneCam.localRotation = Quaternion.identity;
+            }
         }
 
         public void TurnOn()

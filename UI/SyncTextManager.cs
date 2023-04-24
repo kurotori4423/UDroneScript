@@ -9,6 +9,10 @@ using TMPro;
 public class SyncTextManager : UdonSharpBehaviour
 {
     [SerializeField]
+    public string targetTag;
+
+
+    [SerializeField]
     TextMeshProUGUI[] tmProTexts;
 
     [SerializeField]

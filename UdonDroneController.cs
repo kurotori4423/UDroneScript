@@ -44,26 +44,12 @@ namespace Kurotori.UDrone
         [SerializeField]
         GameObject droneCamDisplay;
 
-        //[SerializeField]
-        //GameObject exitButton;
-        //[SerializeField]
-        //GameObject enterButton;
-
-        [SerializeField]
-        GameObject mode1Obj;
-        [SerializeField]
-        GameObject mode2Obj;
-
         [Header("構成要素")]
         [SerializeField]
         [Tooltip("VRCStation")]
         VRCStation station;
 
         Transform stationTransform;
-
-        [SerializeField]
-        [Tooltip("VRプレイヤー用FPV画面")]
-        GameObject droneFPVDisplayForVR;
 
         [Header("SettingPanel")]
 
@@ -158,12 +144,6 @@ namespace Kurotori.UDrone
             initPosition = droneCamDisplay.transform.position;
             initRotation = droneCamDisplay.transform.rotation;
 
-            if (mode1Obj)
-                mode1Obj.SetActive(mode1);
-
-            if (mode2Obj)
-                mode2Obj.SetActive(!mode1);
-
             pickup = (VRC_Pickup)gameObject.GetComponent(typeof(VRC_Pickup));
             pickupRenderer = gameObject.GetComponent<Renderer>();
             pickupCollider = gameObject.GetComponent<Collider>();
@@ -175,11 +155,6 @@ namespace Kurotori.UDrone
                 station.disableStationExit = true;
 
                 station.gameObject.SetActive(false);
-            }
-
-            if (droneFPVDisplayForVR)
-            {
-                droneFPVDisplayForVR.SetActive(false);
             }
 
             // Settingパネル
@@ -326,6 +301,12 @@ namespace Kurotori.UDrone
         {
             // プレイヤーのStationからの離脱
             station.ExitStation(Networking.LocalPlayer);
+            ResetController();
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(ShowPickup));
+        }
+
+        public void ResetController()
+        {
             station.gameObject.SetActive(false);
 
             // ディスプレイ類をオフにする
@@ -340,8 +321,6 @@ namespace Kurotori.UDrone
             {
                 droneCore.SetIsArm(false);
             }
-
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(ShowPickup));
         }
 
         /// <summary>
@@ -358,11 +337,6 @@ namespace Kurotori.UDrone
         void DisplayOff()
         {
             droneCamDisplay.SetActive(false);
-
-            if (droneFPVDisplayForVR)
-            {
-                droneFPVDisplayForVR.SetActive(false);
-            }
         }
 
         void DisplayFPVDrone()
@@ -370,11 +344,6 @@ namespace Kurotori.UDrone
             droneCamDisplay.SetActive(true);
 
             CameraAngleChange();
-
-            if (droneFPVDisplayForVR)
-            {
-                droneFPVDisplayForVR.SetActive(true);
-            }
 
             // ドローンカメラを設定する
             if (droneCam != null && droneCamRig != null)
@@ -469,11 +438,6 @@ namespace Kurotori.UDrone
         public void ChangeMode()
         {
             mode1 = !mode1;
-
-            if (mode1Obj)
-                mode1Obj.SetActive(mode1);
-            if (mode2Obj)
-                mode2Obj.SetActive(!mode1);
 
             if (controlModeLabel)
             {
@@ -570,6 +534,22 @@ namespace Kurotori.UDrone
             {
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(HidePickup));
             }
+        }
+
+        public override void OnPlayerLeft(VRCPlayerApi player)
+        {
+            // オーナーが不正な場合、使っていたプレイヤーがLeftした可能性が高い
+            var owner = Networking.GetOwner(gameObject);
+            if (Utilities.IsValid(owner))
+            {
+                if(owner.isLocal && !controlling)
+                {
+                    Debug.Log("UDRONE: OnPlayerLeft ShowPickup");
+                    ResetController();
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(ShowPickup));
+                }
+            }
+
         }
 
         private void Update()

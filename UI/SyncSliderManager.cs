@@ -13,6 +13,9 @@ using TMPro;
 public class SyncSliderManager : UdonSharpBehaviour
 {
     [SerializeField]
+    public string sliderTag;
+
+    [SerializeField]
     Slider[] sliders;
 
     [SerializeField]
@@ -50,6 +53,8 @@ public class SyncSliderManager : UdonSharpBehaviour
 
     public void OnSliderChange()
     {
+        Debug.Log("UDRONE: OnSliderChange");
+
         var changedSlider = GetChangedSlider();
 
         var changedValue = shareValue;

@@ -283,24 +283,38 @@ namespace Kurotori.UDrone
             // 空気抵抗は自前で計算するため0に設定
             m_Body.drag = 0.0f;
 
-            #endregion
+            // 重心を原点に
+            m_Body.centerOfMass = Vector3.zero;
+
+#if !UNITY_EDITOR
+            if(Networking.LocalPlayer.IsOwner(gameObject))
+            {
+                m_Body.isKinematic = false;
+            }
+            else
+            {
+                m_Body.isKinematic = true;
+            }
+#endif
+
+#endregion
 
             if (m_Controller != null)
                 m_Controller.SetDrone(this);
 
-            #region Audio Setup
+#region Audio Setup
             if (m_AudioSource != null && m_AudioClip != null)
             {
                 m_AudioSource.clip = m_AudioClip;
                 m_AudioSource.loop = true;
                 m_AudioSource.Play();
             }
-            #endregion
+#endregion
 
             m_InitPosition = m_Body.position;
             m_InitRotation = m_Body.rotation;
 
-            #region Setup UI
+#region Setup UI
 
             switch (m_Mode)
             {
@@ -318,7 +332,7 @@ namespace Kurotori.UDrone
                     break;
             }
 
-            #endregion
+#endregion
 
         }
 
@@ -499,7 +513,7 @@ namespace Kurotori.UDrone
             //body.AddRelativeTorque(Vector3.up * (angleForceY * yawForce));
             m_RollTorque = angleForceY;
 
-            Debug.Log("UDRONE: TargetVelocity:(" + localAnglerVelocity.x + "," + localAnglerVelocity.y + "," + localAnglerVelocity.z + ")");
+            //Debug.Log("UDRONE: TargetVelocity:(" + localAnglerVelocity.x + "," + localAnglerVelocity.y + "," + localAnglerVelocity.z + ")");
         }
 
         /// <summary>
@@ -893,13 +907,13 @@ namespace Kurotori.UDrone
 
                 //Debug.Log("UDRONE: Input: E:" + m_Elevator + " A:" + m_Aileron + " R:" + m_Rudder);
 
-                if (m_UseVRRate)
-                {
-                    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//elevator;
-                    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//-aileron * rotateSensitivity;
-                    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//rudder * yawForce;
-                }
-                else
+                //if (m_UseVRRate)
+                //{
+                //    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//elevator;
+                //    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//-aileron * rotateSensitivity;
+                //    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//rudder * yawForce;
+                //}
+                //else
                 {
                     goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRate, m_SuperRate, m_RcExpo);//elevator;
                     goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRate, m_SuperRate, m_RcExpo);//-aileron * rotateSensitivity;
@@ -1084,6 +1098,18 @@ namespace Kurotori.UDrone
         public void SetDroneSoundVolume(float volume)
         {
             m_AudioSource.volume = volume;
+        }
+
+        public override void OnOwnershipTransferred(VRCPlayerApi player)
+        {
+            if(player.isLocal)
+            {
+                m_Body.isKinematic = false;
+            }
+            else
+            {
+                m_Body.isKinematic = true;
+            }
         }
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR

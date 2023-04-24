@@ -17,6 +17,9 @@ namespace Kurotori.UDrone
 
         SerializedProperty _text;
 
+        SerializedProperty _isVirtualCameraMode;
+        SerializedProperty _targetObject;
+
         private void OnEnable()
         {
             _droneCameraRigs = serializedObject.FindProperty("droneCameraRigs");
@@ -24,6 +27,8 @@ namespace Kurotori.UDrone
             _turnOffObjects = serializedObject.FindProperty("turnOffObjects");
             _turnOnObjects = serializedObject.FindProperty("turnOnObjects");
             _text = serializedObject.FindProperty("text");
+            _isVirtualCameraMode = serializedObject.FindProperty("isVirtualCameraMode");
+            _targetObject = serializedObject.FindProperty("targetObject");
         }
 
         public override void OnInspectorGUI()
@@ -80,6 +85,11 @@ namespace Kurotori.UDrone
             EditorGUILayout.PropertyField(_turnOffObjects);
             EditorGUILayout.PropertyField(_turnOnObjects);
             EditorGUILayout.PropertyField(_text);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.PropertyField(_isVirtualCameraMode);
+            EditorGUILayout.PropertyField(_targetObject);
+
 
             if (serializedObject.hasModifiedProperties)
                 serializedObject.ApplyModifiedProperties();
