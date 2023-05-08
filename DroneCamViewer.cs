@@ -35,7 +35,7 @@ namespace Kurotori.UDrone
 
         void Start()
         {
-            text.text = currentCam.ToString();
+            SetLabel();
             TurnOff();
 
         }
@@ -82,17 +82,27 @@ namespace Kurotori.UDrone
             }
         }
 
+        void SetLabel()
+        {
+#if !UNITY_EDITOR
+            string ownerName = Networking.GetOwner(droneCameraRigs[currentCam]).displayName;
+            text.text = string.Format("[{0}]{1}", currentCam, ownerName);
+#endif
+        }
+
         public void Next()
         {
             currentCam = currentCam + 1 > droneCameraRigs.Length - 1 ? 0 : currentCam + 1;
-            text.text = currentCam.ToString();
+
+            SetLabel();
             SetCamera();
         }
 
         public void Prev()
         {
             currentCam = currentCam - 1 < 0 ? droneCameraRigs.Length - 1 : currentCam - 1;
-            text.text = currentCam.ToString();
+
+            SetLabel();
             SetCamera();
         }
     }
