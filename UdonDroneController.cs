@@ -28,10 +28,6 @@ namespace Kurotori.UDrone
         public Transform droneCamRig;
 
         [SerializeField]
-        [Tooltip("機体カメラの回転軸")]
-        Transform droneCamRotateRig;
-
-        [SerializeField]
         [Tooltip("カメラ本体")]
         DroneShareCamera droneCam;
 
@@ -52,37 +48,39 @@ namespace Kurotori.UDrone
         Transform stationTransform;
 
         [Header("SettingPanel")]
+        [SerializeField] SettingPanelManager m_settingPanel;
+        [SerializeField] Transform m_settingPanelPivot;
 
-        [SerializeField]
-        [Tooltip("詳細設定パネル")]
-        GameObject detailPanel;
+        //[SerializeField]
+        //[Tooltip("詳細設定パネル")]
+        //GameObject detailPanel;
 
-        [SerializeField]
-        [Tooltip("飛行モード表示")]
-        TextMeshProUGUI flymodeLabel;
+        //[SerializeField]
+        //[Tooltip("飛行モード表示")]
+        //TextMeshProUGUI flymodeLabel;
 
-        [SerializeField]
-        [Tooltip("操作モード表示")]
-        TextMeshProUGUI controlModeLabel;
+        //[SerializeField]
+        //[Tooltip("操作モード表示")]
+        //TextMeshProUGUI controlModeLabel;
 
-        [SerializeField]
-        [Tooltip("カスタム入力を有効にするかのトグルスイッチ")]
-        Toggle useCustomInputToggle;
+        //[SerializeField]
+        //[Tooltip("カスタム入力を有効にするかのトグルスイッチ")]
+        //Toggle useCustomInputToggle;
 
-        [SerializeField]
-        [Tooltip("高度維持を有効にするかのトグルスイッチ")]
-        Toggle AutoAltitudeControlToggle;
+        //[SerializeField]
+        //[Tooltip("高度維持を有効にするかのトグルスイッチ")]
+        //Toggle AutoAltitudeControlToggle;
 
-        [SerializeField]
-        [Tooltip("スロットルセンターホバリングを有効にするかのトグルスイッチ")]
-        Toggle ThrottleCenterHoveringToggle;
+        //[SerializeField]
+        //[Tooltip("スロットルセンターホバリングを有効にするかのトグルスイッチ")]
+        //Toggle ThrottleCenterHoveringToggle;
 
-        [SerializeField]
-        [Tooltip("カメラ回転角のスライダー")]
-        Slider cameraRotateSlider;
-        [SerializeField]
-        [Tooltip("カメラ角度ラベル")]
-        TextMeshProUGUI cameraAngleLabel;
+        //[SerializeField]
+        //[Tooltip("カメラ回転角のスライダー")]
+        //Slider cameraRotateSlider;
+        //[SerializeField]
+        //[Tooltip("カメラ角度ラベル")]
+        //TextMeshProUGUI cameraAngleLabel;
 
         [Header("入力設定")]
         [SerializeField]
@@ -131,12 +129,10 @@ namespace Kurotori.UDrone
         const int MODE_ANGLE = 0;
         const int MODE_ACRO = 1;
 
-        bool detailPanelOn = false;
+        //bool detailPanelOn = false;
 
         void Start()
         {
-            // マニュアル同期変数用コントローラーを設定
-            syncVariables.droneController = this;
 
             controlling = false;
             droneCamDisplay.SetActive(false);
@@ -156,56 +152,6 @@ namespace Kurotori.UDrone
 
                 station.gameObject.SetActive(false);
             }
-
-            // Settingパネル
-            if (flymodeLabel)
-            {
-                switch (flymode)
-                {
-                    case MODE_ANGLE:
-                        flymodeLabel.text = "ANGLE";
-                        break;
-                    case MODE_ACRO:
-                        flymodeLabel.text = "ACRO";
-                        break;
-                }
-            }
-
-            if (controlModeLabel)
-            {
-                if (mode1)
-                {
-                    controlModeLabel.text = "MODE 1";
-                }
-                else
-                {
-                    controlModeLabel.text = "MODE 2";
-                }
-            }
-
-            if (detailPanel)
-            {
-                detailPanel.SetActive(detailPanelOn);
-            }
-
-
-            if (useCustomInputToggle)
-            {
-                useCustomInputToggle.isOn = useCustomInput;
-
-                if (useCustomInputToggle.isOn)
-                {
-                    UseCustomInputON();
-                }
-                else
-                {
-                    UseCustomInputOFF();
-                }
-            }
-
-            
-
-            CameraAngleChange();
 
         }
 
@@ -252,10 +198,6 @@ namespace Kurotori.UDrone
             // フラグ設定
             controlling = true;
 
-            //    controlling = false;
-            //    Networking.LocalPlayer.Immobilize(false);
-            //    droneCamDisplay.SetActive(false);
-
             // 他プレイヤーへ非表示指示
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, nameof(HidePickup));
 
@@ -263,6 +205,8 @@ namespace Kurotori.UDrone
             {
                 droneCore.SetIsArm(true);
             }
+
+            m_settingPanel.AttachController(m_settingPanelPivot);
         }
 
         public void HidePickup()
@@ -287,9 +231,6 @@ namespace Kurotori.UDrone
 
         public override void OnPickupUseUp()
         {
-            //controlling = true;
-            //Networking.LocalPlayer.Immobilize(true);
-            //droneCamDisplay.SetActive(true);
         }
 
         #endregion
@@ -311,6 +252,9 @@ namespace Kurotori.UDrone
 
             // ディスプレイ類をオフにする
             DisplayOff();
+
+            // パネルを元の位置に戻します。
+            m_settingPanel.SetDefaultPosition();
 
             pickup.pickupable = true;
             pickupRenderer.enabled = true;
@@ -343,7 +287,7 @@ namespace Kurotori.UDrone
         {
             droneCamDisplay.SetActive(true);
 
-            CameraAngleChange();
+            //CameraAngleChange();
 
             // ドローンカメラを設定する
             if (droneCam != null && droneCamRig != null)
@@ -362,31 +306,31 @@ namespace Kurotori.UDrone
 
         public void UseCustomInputToggle()
         {
-            if (useCustomInputToggle == null) return;
+            //if (useCustomInputToggle == null) return;
 
-            if (useCustomInputToggle.isOn)
-            {
-                UseCustomInputON();
-            }
-            else
-            {
-                UseCustomInputOFF();
-            }
+            //if (useCustomInputToggle.isOn)
+            //{
+            //    UseCustomInputON();
+            //}
+            //else
+            //{
+            //    UseCustomInputOFF();
+            //}
         }
 
         public void ToggleAutoAltitudeControl()
         {
-            if (AutoAltitudeControlToggle == null) return;
+            //if (AutoAltitudeControlToggle == null) return;
 
 
-            droneCore.SetHightAdjustMode(AutoAltitudeControlToggle.isOn);
+            //droneCore.SetHightAdjustMode(AutoAltitudeControlToggle.isOn);
         }
 
         public void ToggleThrottleCenterHovering()
         {
-            if (ThrottleCenterHoveringToggle == null) return;
+            //if (ThrottleCenterHoveringToggle == null) return;
 
-            droneCore.SetHightAdjustMode(ThrottleCenterHoveringToggle.isOn);
+            //droneCore.SetHightAdjustMode(ThrottleCenterHoveringToggle.isOn);
         }
 
         public void UseCustomInputON()
@@ -419,37 +363,19 @@ namespace Kurotori.UDrone
         public override void SetDrone(UdonDroneCore droneCore)
         {
             this.droneCore = droneCore;
-
             this.droneCore.SetUseVRRate(!useCustomInput);
-
-            if (AutoAltitudeControlToggle)
-            {
-                this.droneCore.SetHightAdjustMode(AutoAltitudeControlToggle.isOn);
-            }
-
-            if(ThrottleCenterHoveringToggle)
-            {
-                this.droneCore.SetThrottleCenterHoveringMode(ThrottleCenterHoveringToggle.isOn);
-            }
-
+            
             Debug.Log("Set Drone");
         }
 
         public void ChangeMode()
         {
             mode1 = !mode1;
+        }
 
-            if (controlModeLabel)
-            {
-                if (mode1)
-                {
-                    controlModeLabel.text = "MODE 1";
-                }
-                else
-                {
-                    controlModeLabel.text = "MODE 2";
-                }
-            }
+        public void SetMode(bool isMode1)
+        {
+            mode1 = isMode1;
         }
 
         public void ChangeFlyMode()
@@ -461,46 +387,24 @@ namespace Kurotori.UDrone
                     case MODE_ANGLE:
                         flymode = MODE_ACRO;
                         droneCore.ChangeMode_Acro();
-                        flymodeLabel.text = "ACRO";
                         break;
                     case MODE_ACRO:
                         flymode = MODE_ANGLE;
                         droneCore.ChangeMode_Angle();
-                        flymodeLabel.text = "ANGLE";
                         break;
                 }
             }
         }
 
-        public void DetailPanelToggle()
+        public void SettingPanelToggle()
         {
-            if (detailPanel)
-            {
-                detailPanelOn = !detailPanelOn;
-                detailPanel.SetActive(detailPanelOn);
-            }
-        }
-
-        public void CameraAngleChange()
-        {
-            if (cameraRotateSlider)
-            {
-                if (Networking.LocalPlayer != null && Networking.LocalPlayer.IsOwner(gameObject))
-                {
-                    var angle = Mathf.Lerp(0, 90, cameraRotateSlider.value);
-                    cameraAngleLabel.text = string.Format("{0:0}°", angle);
-                    droneCamRotateRig.localRotation = Quaternion.AngleAxis(angle, Vector3.right);
-
-                    syncVariables.SetCameraAngles(angle);
-                }
-
-            }
+            m_settingPanel.ToggleMainPanelDisplay();
         }
 
         public void SetCameraAngleGlobal()
         {
             Debug.Log("Set Global Camera Angle :" + syncVariables.CameraAngles.ToString());
-            droneCamRotateRig.localRotation = Quaternion.AngleAxis(syncVariables.CameraAngles, Vector3.right);
+            droneCore.SetCameraAngle(syncVariables.CameraAngles);
         }
 
         public void ResetDrone()
@@ -593,12 +497,6 @@ namespace Kurotori.UDrone
             }
 
             
-            //if (!Networking.LocalPlayer.IsOwner(gameObject))
-            //{
-            //    // カメラの状態をグローバル状態にする
-            //    Debug.Log("Set Global Camera Angle :" + globalCamAngle.ToString());
-            //    droneCamRotateRig.localRotation = Quaternion.AngleAxis(globalCamAngle, Vector3.right);
-            //}
         }
 
         void CustomControl()
@@ -744,6 +642,22 @@ namespace Kurotori.UDrone
             return value;
         }
 
+        public void SetInvertLH( bool value)
+        {
+            invertLH = value;
+        }
+        public void SetInvertLV(bool value)
+        {
+            invertLV = value;
+        }
+        public void SetInvertRH(bool value)
+        {
+            invertRH = value;
+        }
+        public void SetInvertRV(bool value)
+        {
+            invertRV = value;
+        }
 
         public void SetInvertLHON()
         {
@@ -778,7 +692,24 @@ namespace Kurotori.UDrone
             invertRV = false;
         }
 
-#region SetCustomInput
+        public void SetCustomLHInput(string axis)
+        {
+            customLHorizontal = axis;
+        }
+        public void SetCustomLVInput(string axis)
+        {
+            customLVertical = axis;
+        }
+        public void SetCustomRHInput(string axis)
+        {
+            customRHorizontal = axis;
+        }
+        public void SetCustomRVInput(string axis)
+        {
+            customRVertical = axis;
+        }
+
+        #region SetCustomInput
 
         // Joy1 Axis 1
 

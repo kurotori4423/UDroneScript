@@ -26,9 +26,12 @@ namespace Kurotori.UDrone
 
         Rigidbody m_Body;
 
+        [SerializeField]
+        public UdonDroneManualSyncVariables m_ManualSyncVariables;
+
         [Header("Controller")]
         [SerializeField]
-        private IDroneController m_Controller;
+        private UdonDroneController m_Controller;
 
         [SerializeField]
         [Tooltip("リセット位置")]
@@ -250,6 +253,12 @@ namespace Kurotori.UDrone
         float m_PitchFactor = 2.0f;
         [SerializeField]
         float m_MaxPitch = 10.0f;
+        [SerializeField]
+        float m_MaxPitchForce = 8.0f;
+
+        [Header("カメラの設定")]
+        [SerializeField,Tooltip("カメラの回転軸")]
+        Transform m_CameraRotateRig;
 
         [Header("UI")]
         [SerializeField]
@@ -268,6 +277,8 @@ namespace Kurotori.UDrone
 
         void Start()
         {
+            m_ManualSyncVariables.m_droneCore = this;
+
             m_IsArm = false;
 #if UNITY_EDITOR
             m_IsArm = true;
@@ -557,6 +568,11 @@ namespace Kurotori.UDrone
 
         }
 
+        public UdonDroneController GetController()
+        {
+            return m_Controller;
+        }
+
         public bool GetIsArm()
         {
             return m_IsArm;
@@ -622,9 +638,22 @@ namespace Kurotori.UDrone
             m_MaxAngle = angle;
         }
 
+        public void SetThrottleForce(float throttle)
+        {
+            m_MaxThrottleForce = throttle;
+        }
+
         public float GetMaxAngle()
         {
             return m_MaxAngle;
+        }
+
+        /// <summary>
+        /// 機体のカメラアングルを指定します
+        /// </summary>
+        public void SetCameraAngle(float eularAngle)
+        {
+            m_CameraRotateRig.localRotation = Quaternion.AngleAxis(eularAngle, Vector3.right);
         }
 
         public void ChangeMode()
@@ -725,7 +754,7 @@ namespace Kurotori.UDrone
 
         private void LookUpdate()
         {
-            float engineMax = m_MaxThrottleForce;//maxForce / body.mass;
+            float engineMax = m_MaxPitchForce;//maxForce / body.mass;
             float pitch = m_EngineSpeed / Mathf.Max(engineMax, 0.0001f);
 
             if (m_AudioSource)
@@ -1105,6 +1134,7 @@ namespace Kurotori.UDrone
             if(player.isLocal)
             {
                 m_Body.isKinematic = false;
+                Networking.SetOwner(player, m_ManualSyncVariables.gameObject);
             }
             else
             {
