@@ -1,10 +1,8 @@
 ﻿
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using VRC.SDKBase;
-using VRC.Udon;
 
 namespace Kurotori.UDrone
 {

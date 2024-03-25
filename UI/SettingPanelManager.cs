@@ -7,7 +7,7 @@ namespace Kurotori.UDrone
 {
     /// <summary>
     /// ドローンの設定を行うUdon
-    /// ドローンの挙動の設定、コントローラーの設定、画面の設定などを弄れるようにする
+    /// ドローンの挙動の設定、コントローラーの設定、画面の設定などを行うパネルのマネージャ
     /// 
     /// </summary>
     public class SettingPanelManager : UdonSharpBehaviour

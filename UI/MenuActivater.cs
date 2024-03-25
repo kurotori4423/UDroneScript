@@ -2,13 +2,11 @@
 using System;
 using UdonSharp;
 using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
 
 namespace Kurotori.UDrone
 {
     /// <summary>
-    /// メニューパネルを有効化するUdon
+    /// メニューパネルを有効化するカテゴリボタンのUdon
     /// </summary>
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
     public class MenuActivater : UdonSharpBehaviour

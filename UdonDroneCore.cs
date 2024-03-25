@@ -37,10 +37,6 @@ namespace Kurotori.UDrone
         [Tooltip("リセット位置")]
         public Transform m_ResetPos;
 
-        //[SerializeField]
-        //[Tooltip("グローバル設定")]
-        //public DroneSetting m_DroneSetting;
-
         [Header("機体制御設定 -----------------------------------------------------------------")]
         [SerializeField]
         [Tooltip("制御モード\n 0:アングルモード \n 1:アクロモード")]
@@ -83,9 +79,6 @@ namespace Kurotori.UDrone
         float m_TopSpeed = 30;
 
         [Header("機体出力設定 -----------------------------------------------------------------")]
-        //[SerializeField]
-        //[Tooltip("最大機体出力: 重力と釣り合う状態を0とします。[機体質量に比例]")]
-        //float maxForce = 5.0f;
 
         [SerializeField]
         [Tooltip("最大上昇スロットル[機体質量に比例]")]
@@ -113,22 +106,12 @@ namespace Kurotori.UDrone
         float m_ForceLB = 0;
 
         [Header("操作感度設定 -----------------------------------------------------------------")]
-        [SerializeField]
-        [Tooltip("高度維持機能有効時の最大出力変化量")]
-        float m_BrakeMax = 0.3f; // 最大変化量
 
         // コントローラー入力
         [HideInInspector] private float m_Throttle = -1; // 上昇
         [HideInInspector] private float m_Rudder = 0; // 左右旋回
         [HideInInspector] private float m_Elevator = 0; // 前進・後退
         [HideInInspector] private float m_Aileron = 0; // 左右スライド
-
-        //[SerializeField]
-        //[Tooltip("スロットル感度[高度維持機能オフ時]")]
-        //float throttleSensitivity = 2.0f; // スロットル感度
-        //[SerializeField]
-        //[Tooltip("回転操作感度[アクロモード時]")]
-        //float rotateSensitivity = 5.0f; // 回転感度
 
         [Header("レート設定")]
         [SerializeField]
@@ -139,13 +122,6 @@ namespace Kurotori.UDrone
         float m_SuperRate = 0.6f;
         [SerializeField]
         float m_RcExpo = 0.0f;
-        [Header("VR用レート")]
-        [SerializeField]
-        float m_RcRateVR = 3.0f;
-        [SerializeField]
-        float m_SuperRateVR = 0.0f;
-        [SerializeField]
-        float m_RcExpoVR = 0.0f;
 
 
         [Header("高度維持機能関係 ---------------------------------------------------------------")]
@@ -248,7 +224,12 @@ namespace Kurotori.UDrone
         [SerializeField]
         AudioClip m_AudioClip;
         [SerializeField]
-        AudioSource m_AudioSource;
+        public AudioSource m_AudioSource;
+        [SerializeField]
+        public Transform AudioSourcePivot;
+        [SerializeField]
+        public Transform AudioSourceControllerPivot;
+
         [SerializeField]
         float m_PitchFactor = 2.0f;
         [SerializeField]
@@ -261,28 +242,24 @@ namespace Kurotori.UDrone
         Transform m_CameraRotateRig;
 
         [Header("UI")]
-        [SerializeField]
-        GameObject m_Mode_ACRO;
-        [SerializeField]
-        GameObject m_Mode_ANGLE;
 
         // リセット用初期姿勢
         Vector3 m_InitPosition;
         Quaternion m_InitRotation;
 
-        [Tooltip("操作状態")]
+        [Tooltip("自分が操作状態かどうか")]
         private bool m_IsArm = false;
 
-        bool m_FlipOverMode = false;
+        /// <summary>
+        /// ドローンの音声をコントローラー位置に固定するかどうか
+        /// </summary>
+        private bool m_audioFixToController = false;
 
         void Start()
         {
             m_ManualSyncVariables.m_droneCore = this;
 
             m_IsArm = false;
-#if UNITY_EDITOR
-            m_IsArm = true;
-#endif
 
             #region RigidBody Setting
 
@@ -330,16 +307,8 @@ namespace Kurotori.UDrone
             switch (m_Mode)
             {
                 case MODE_ACRO:
-                    if (m_Mode_ANGLE)
-                        m_Mode_ANGLE.SetActive(false);
-                    if (m_Mode_ACRO)
-                        m_Mode_ACRO.SetActive(true);
                     break;
                 case MODE_ANGLE:
-                    if (m_Mode_ANGLE)
-                        m_Mode_ANGLE.SetActive(true);
-                    if (m_Mode_ACRO)
-                        m_Mode_ACRO.SetActive(false);
                     break;
             }
 
@@ -581,6 +550,33 @@ namespace Kurotori.UDrone
         public void SetIsArm(bool flag)
         {
             m_IsArm = flag;
+
+            UpdateAudioFix();
+        }
+
+        /// <summary>
+        /// オーディオの固定位置を変更
+        /// </summary>
+        void UpdateAudioFix()
+        {
+            if (m_IsArm)
+            {
+                if (m_audioFixToController)
+                {
+                    m_AudioSource.transform.parent = AudioSourceControllerPivot;
+                    m_AudioSource.transform.localPosition = Vector3.zero;
+                }
+                else
+                {
+                    m_AudioSource.transform.parent = AudioSourcePivot;
+                    m_AudioSource.transform.localPosition = Vector3.zero;
+                }
+            }
+            else
+            {
+                m_AudioSource.transform.parent = AudioSourcePivot;
+                m_AudioSource.transform.localPosition = Vector3.zero;
+            }
         }
 
         public void ChangeMode_Angle()
@@ -662,17 +658,9 @@ namespace Kurotori.UDrone
             {
                 case MODE_ANGLE:
                     m_Mode = MODE_ACRO;
-                    if (m_Mode_ANGLE)
-                        m_Mode_ANGLE.SetActive(false);
-                    if (m_Mode_ACRO)
-                        m_Mode_ACRO.SetActive(true);
                     break;
                 case MODE_ACRO:
                     m_Mode = MODE_ANGLE;
-                    if (m_Mode_ANGLE)
-                        m_Mode_ANGLE.SetActive(true);
-                    if (m_Mode_ACRO)
-                        m_Mode_ACRO.SetActive(false);
                     break;
             }
         }
@@ -1127,6 +1115,17 @@ namespace Kurotori.UDrone
         public void SetDroneSoundVolume(float volume)
         {
             m_AudioSource.volume = volume;
+        }
+
+        /// <summary>
+        /// ドローンの音声の固定先をコントローラーに固定するかしないか
+        /// </summary>
+        /// <param name="flag"></param>
+        public void SetDroneAudioFixController(bool flag)
+        {
+            m_audioFixToController = flag;
+
+            UpdateAudioFix();
         }
 
         public override void OnOwnershipTransferred(VRCPlayerApi player)

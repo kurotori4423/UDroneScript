@@ -103,7 +103,7 @@ namespace Kurotori.UDrone
             {
                 if (obj.activeInHierarchy)
                 {
-                    var droneController = obj.GetUdonSharpComponent<UdonDroneController>();
+                    var droneController = obj.GetComponent<UdonDroneController>();
                     if (droneController)
                     {
                         if(droneController.droneCamRig)
