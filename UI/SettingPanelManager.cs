@@ -5,6 +5,11 @@ using VRC.SDKBase;
 using VRC.Udon;
 namespace Kurotori.UDrone
 {
+    /// <summary>
+    /// ドローンの設定を行うUdon
+    /// ドローンの挙動の設定、コントローラーの設定、画面の設定などを弄れるようにする
+    /// 
+    /// </summary>
     public class SettingPanelManager : UdonSharpBehaviour
     {
         [SerializeField]
@@ -12,20 +17,20 @@ namespace Kurotori.UDrone
         [SerializeField]
         Transform defaultPosition;
 
-        [SerializeField]
+        [SerializeField, HideInInspector]
         UdonDroneCore[] udrones;
 
         [SerializeField]
         IDroneSettingPanel[] settingPanels;
 
         [SerializeField]
-        GameObject m_mainPanel;
+        GameObject mainPanel;
 
         bool displayMainPanel = false; // コントローラーにアタッチ時のメインパネルの表示状態
 
         void Start()
         {
-            m_mainPanel.SetActive(true);
+            mainPanel.SetActive(true);
 
             SetupPanelTab();
             SetupDroneSettings();
@@ -84,14 +89,14 @@ namespace Kurotori.UDrone
             this.transform.position = pivot.position;
             this.transform.rotation = pivot.rotation;
 
-            m_mainPanel.SetActive(displayMainPanel);
+            mainPanel.SetActive(displayMainPanel);
         }
 
         public void ToggleMainPanelDisplay()
         {
             displayMainPanel = !displayMainPanel;
 
-            m_mainPanel.SetActive(displayMainPanel);
+            mainPanel.SetActive(displayMainPanel);
         }
 
         /// <summary>
@@ -102,7 +107,7 @@ namespace Kurotori.UDrone
             this.transform.position = defaultPosition.position;
             this.transform.rotation = defaultPosition.rotation;
 
-            m_mainPanel.SetActive(true);
+            mainPanel.SetActive(true);
         }
     }
 }
