@@ -3,6 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.SDK3.Components;
 
 #if !COMPILE_UDONSHARP && UNITY_EDITOR
 using UnityEditor;
@@ -115,8 +116,6 @@ namespace Kurotori.UDrone
 
         [Header("レート設定")]
         [SerializeField]
-        private bool m_UseVRRate = true;
-        [SerializeField]
         float m_RcRate = 1.0f;
         [SerializeField]
         float m_SuperRate = 0.6f;
@@ -198,8 +197,17 @@ namespace Kurotori.UDrone
 
         Vector3 m_GoalAnglerV;
 
+        /// <summary>
+        /// 前回の角速度誤差
+        /// </summary>
         Vector3 m_PrevPrevAnglerVDiff;
+        /// <summary>
+        /// 現在の角速度誤差
+        /// </summary>
         Vector3 m_PrevAnglerVDiff;
+        /// <summary>
+        /// 誤差の微分
+        /// </summary>
         Vector3 m_IntegralAnglerV;
 
         [Header("見た目の設定 -----------------------------------------------------------------")]
@@ -236,10 +244,14 @@ namespace Kurotori.UDrone
         float m_MaxPitch = 10.0f;
         [SerializeField]
         float m_MaxPitchForce = 8.0f;
+        [SerializeField]
+        TrailRenderer m_TrailRenderer;
 
         [Header("カメラの設定")]
+        [SerializeField, Tooltip("カメラのアタッチ先")]
+        public Transform CameraRig;
         [SerializeField,Tooltip("カメラの回転軸")]
-        Transform m_CameraRotateRig;
+        public Transform m_CameraRotateRig;
 
         [Header("UI")]
 
@@ -248,8 +260,11 @@ namespace Kurotori.UDrone
         Quaternion m_InitRotation;
 
         [Tooltip("自分が操作状態かどうか")]
-        private bool m_IsArm = false;
+        private bool m_IsArmLocal = false;
 
+        VRCObjectSync m_objectSync;
+
+        
         /// <summary>
         /// ドローンの音声をコントローラー位置に固定するかどうか
         /// </summary>
@@ -259,7 +274,7 @@ namespace Kurotori.UDrone
         {
             m_ManualSyncVariables.m_droneCore = this;
 
-            m_IsArm = false;
+            m_IsArmLocal = false;
 
             #region RigidBody Setting
 
@@ -274,16 +289,8 @@ namespace Kurotori.UDrone
             // 重心を原点に
             m_Body.centerOfMass = Vector3.zero;
 
-#if !UNITY_EDITOR
-            if(Networking.LocalPlayer.IsOwner(gameObject))
-            {
-                m_Body.isKinematic = false;
-            }
-            else
-            {
-                m_Body.isKinematic = true;
-            }
-#endif
+            m_objectSync = GetComponent<VRCObjectSync>();
+
 
 #endregion
 
@@ -319,19 +326,17 @@ namespace Kurotori.UDrone
         private void FixedUpdate()
         {
 
-#if !UNITY_EDITOR
         if (Networking.LocalPlayer != null && !Networking.LocalPlayer.IsOwner(gameObject))
         {
             LookUpdate();
             return;
         }
-#endif
             LookUpdate();
 
             InputUpdate();
 
             
-            if (m_IsArm)
+            if (m_IsArmLocal)
             {
 
                 // PID制御 上下方向速度を0になるように調整する
@@ -464,34 +469,38 @@ namespace Kurotori.UDrone
 
         void CalcAcroModePID()
         {
-            Vector3 localAnglerVelocity = m_Body.transform.InverseTransformDirection(m_Body.angularVelocity).normalized * m_Body.angularVelocity.magnitude;
+            //Vector3 localAnglerVelocity = m_Body.transform.InverseTransformDirection(m_Body.angularVelocity).normalized * m_Body.angularVelocity.magnitude;
+            Vector3 localAnglerVelocity = m_Body.transform.InverseTransformVector(m_Body.angularVelocity);
 
             m_PrevPrevAnglerVDiff = m_PrevAnglerVDiff;
-            m_PrevAnglerVDiff = localAnglerVelocity - m_GoalAnglerV;
-            m_IntegralAnglerV += (m_PrevPrevAnglerVDiff + m_PrevAnglerVDiff) * 0.5f * Time.deltaTime;
+            m_PrevAnglerVDiff = localAnglerVelocity - m_GoalAnglerV; // 誤差を計算
+
+            m_IntegralAnglerV += (m_PrevPrevAnglerVDiff + m_PrevAnglerVDiff) * 0.5f * Time.deltaTime; // 誤差の積分を近似計算
 
             Vector3 P = m_PrevAnglerVDiff * (m_AnglerV_Kp);
             Vector3 I = m_IntegralAnglerV * (m_AnglerV_Ki);
-            Vector3 D = (m_AnglerV_Kd) * (m_PrevAnglerVDiff - m_PrevPrevAnglerVDiff) / Time.deltaTime;
+            Vector3 D = m_AnglerV_Kd * ((m_PrevAnglerVDiff - m_PrevPrevAnglerVDiff) / Time.deltaTime);
 
             Vector3 pid = -(P + I + D);
 
-            
+            Debug.Log($"PID:{P.y} {I.y} {D.y}");
 
-            //float angleForceX = Mathf.Sign(pid.x) * Mathf.Min(Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
-            float angleForceX = Mathf.Sign(pid.x) * Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass;
+            float angleForceX = Mathf.Sign(pid.x) * Mathf.Min(Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            //float angleForceX = Mathf.Sign(pid.x) * Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass;
             m_FrontForce = -angleForceX;
             m_BackForce = angleForceX;
 
-            //float angleForceZ = Mathf.Sign(pid.z) * Mathf.Min(Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
-            float angleForceZ = Mathf.Sign(pid.z) * Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass;
+            float angleForceZ = Mathf.Sign(pid.z) * Mathf.Min(Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            //float angleForceZ = Mathf.Sign(pid.z) * Mathf.Abs(pid.z) * m_MaxRotationThrottleForce * m_Body.mass;
             m_LeftForce = -angleForceZ;
             m_RightForce = angleForceZ;
 
-            //float angleForceY = Mathf.Sign(pid.y) * Mathf.Min(Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
-            float angleForceY = Mathf.Sign(pid.y) * Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass;
+            float angleForceY = Mathf.Sign(pid.y) * Mathf.Min(Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
+            //float angleForceY = Mathf.Sign(pid.y) * Mathf.Abs(pid.y) * m_MaxRotationThrottleForce * m_Body.mass;
             //body.AddRelativeTorque(Vector3.up * (angleForceY * yawForce));
             m_RollTorque = angleForceY;
+
+            Debug.Log($"RollTorque:{m_RollTorque}");
 
             //Debug.Log("UDRONE: TargetVelocity:(" + localAnglerVelocity.x + "," + localAnglerVelocity.y + "," + localAnglerVelocity.z + ")");
         }
@@ -542,14 +551,14 @@ namespace Kurotori.UDrone
             return m_Controller;
         }
 
-        public bool GetIsArm()
+        public bool GetIsArmLocal()
         {
-            return m_IsArm;
+            return m_IsArmLocal;
         }
 
-        public void SetIsArm(bool flag)
+        public void SetIsArmLocal(bool flag)
         {
-            m_IsArm = flag;
+            m_IsArmLocal = flag;
 
             UpdateAudioFix();
         }
@@ -559,7 +568,7 @@ namespace Kurotori.UDrone
         /// </summary>
         void UpdateAudioFix()
         {
-            if (m_IsArm)
+            if (m_IsArmLocal)
             {
                 if (m_audioFixToController)
                 {
@@ -574,6 +583,7 @@ namespace Kurotori.UDrone
             }
             else
             {
+                // 操作していないドローンはドローンの位置で音が鳴る
                 m_AudioSource.transform.parent = AudioSourcePivot;
                 m_AudioSource.transform.localPosition = Vector3.zero;
             }
@@ -592,11 +602,6 @@ namespace Kurotori.UDrone
         public int GetFlyingMode()
         {
             return m_Mode;
-        }
-
-        public void SetUseVRRate(bool flag)
-        {
-            m_UseVRRate = flag;
         }
 
         public void SetThrottleCenterHoveringMode(bool flag)
@@ -683,26 +688,34 @@ namespace Kurotori.UDrone
 
         public void ResetAll()
         {
+            if(Networking.IsOwner(gameObject))
+            {
+                m_objectSync.FlagDiscontinuity();
+                if (m_ResetPos)
+                    m_objectSync.TeleportTo(m_ResetPos);
+                else
+                    m_objectSync.Respawn();
+            }
 
-            m_Body.isKinematic = true;
+            //m_Body.isKinematic = true;
 
             m_Body.velocity = Vector3.zero;
             m_Body.angularVelocity = Vector3.zero;
 
-            if (m_ResetPos)
-            {
-                m_Body.position = m_ResetPos.position;
-                m_Body.rotation = m_ResetPos.rotation;
-            }
-            else
-            {
-                m_Body.rotation = m_InitRotation;
-                m_Body.position = m_InitPosition;
-            }
+            //if (m_ResetPos)
+            //{
+            //    m_Body.position = m_ResetPos.position;
+            //    m_Body.rotation = m_ResetPos.rotation;
+            //}
+            //else
+            //{
+            //    m_Body.rotation = m_InitRotation;
+            //    m_Body.position = m_InitPosition;
+            //}
 
             ResetPIDParameter();
 
-            SendCustomEventDelayedFrames("ResetEnd", 5);
+            //SendCustomEventDelayedFrames("ResetEnd", 5);
         }
 
         void ResetPIDParameter()
@@ -918,24 +931,10 @@ namespace Kurotori.UDrone
 
             // 角度制御：角速度基準
             {
-                float goalAnglerVX = 0;
-                float goalAnglerVZ = 0;
-                float goalAnglerVY = 0;
+                float goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRate, m_SuperRate, m_RcExpo);//elevator;
+                float goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRate, m_SuperRate, m_RcExpo);//-aileron * rotateSensitivity;
+                float goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRate, m_SuperRate, m_RcExpo);//rudder * yawForce;
 
-                //Debug.Log("UDRONE: Input: E:" + m_Elevator + " A:" + m_Aileron + " R:" + m_Rudder);
-
-                //if (m_UseVRRate)
-                //{
-                //    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//elevator;
-                //    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//-aileron * rotateSensitivity;
-                //    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRateVR, m_SuperRateVR, m_RcExpoVR);//rudder * yawForce;
-                //}
-                //else
-                {
-                    goalAnglerVX = CalcBetaFlightRate(m_Elevator, m_RcRate, m_SuperRate, m_RcExpo);//elevator;
-                    goalAnglerVZ = CalcBetaFlightRate(-m_Aileron, m_RcRate, m_SuperRate, m_RcExpo);//-aileron * rotateSensitivity;
-                    goalAnglerVY = CalcBetaFlightRate(m_Rudder, m_RcRate, m_SuperRate, m_RcExpo);//rudder * yawForce;
-                }
                 m_GoalAnglerV = new Vector3(goalAnglerVX, goalAnglerVY, goalAnglerVZ);
             }
         }

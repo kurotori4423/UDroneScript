@@ -1,6 +1,7 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.InputSystem.XR;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -9,6 +10,9 @@ namespace Kurotori.UDrone
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class JoyInputSetting : IDroneSettingPanel
     {
+        [SerializeField]
+        CustomControllerInput customControllerInput;
+
         [SerializeField]
         AxisAssignPanel LHAxisPanel;
         [SerializeField]
@@ -150,40 +154,29 @@ namespace Kurotori.UDrone
                 case 0:
                     {
                         Debug.Log($"[DroneSetting] Set Custom LH Invert : {value}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetInvertLH(value);
-                        }
+                        customControllerInput.SetInvertLH(value);
+
                         LHAxisInvert = value;
                         break;
                     }
                 case 1:
                     {
                         Debug.Log($"[DroneSetting] Set Custom LV Invert : {value}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetInvertLV(value);
-                        }
+                        customControllerInput.SetInvertLV(value);
                         LVAxisInvert = value;
                         break;
                     }
                 case 2:
                     {
                         Debug.Log($"[DroneSetting] Set Custom RH Invert : {value}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetInvertRH(value);
-                        }
+                        customControllerInput.SetInvertRH(value);
                         RHAxisInvert = value;
                         break;
                     }
                 case 3:
                     {
                         Debug.Log($"[DroneSetting] Set Custom RV Invert : {value}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetInvertRV(value);
-                        }
+                        customControllerInput.SetInvertRV(value);
                         RVAxisInvert = value;
                         break;
                     }
@@ -197,10 +190,7 @@ namespace Kurotori.UDrone
                 case 0:
                     {
                         Debug.Log($"[DroneSetting] Set Custom LH : {stickInputsLabel[axisID]}");
-                        foreach(var drone in udrones)
-                        {
-                            drone.GetController().SetCustomLHInput(stickInputsLabel[axisID]);
-                        }
+                        customControllerInput.SetCustomLHInput(stickInputsLabel[axisID]);
                         LHAxisID = axisID;
                         LHAxisPanel.label.text = stickInputsLabel[axisID];
                         break;
@@ -208,10 +198,8 @@ namespace Kurotori.UDrone
                 case 1:
                     {
                         Debug.Log($"[DroneSetting] Set Custom LV : {stickInputsLabel[axisID]}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetCustomLVInput(stickInputsLabel[axisID]);
-                        }
+                        customControllerInput.SetCustomLVInput(stickInputsLabel[axisID]);
+
                         LVAxisID = axisID;
                         LVAxisPanel.label.text = stickInputsLabel[axisID];
                         break;
@@ -219,10 +207,8 @@ namespace Kurotori.UDrone
                 case 2:
                     {
                         Debug.Log($"[DroneSetting] Set Custom RH : {stickInputsLabel[axisID]}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetCustomRHInput(stickInputsLabel[axisID]);
-                        }
+                        customControllerInput.SetCustomRHInput(stickInputsLabel[axisID]);
+
                         RHAxisID = axisID;
                         RHAxisPanel.label.text = stickInputsLabel[axisID];
                         break;
@@ -230,10 +216,8 @@ namespace Kurotori.UDrone
                 case 3:
                     {
                         Debug.Log($"[DroneSetting] Set Custom RV : {stickInputsLabel[axisID]}");
-                        foreach (var drone in udrones)
-                        {
-                            drone.GetController().SetCustomRVInput(stickInputsLabel[axisID]);
-                        }
+                        customControllerInput.SetCustomRVInput(stickInputsLabel[axisID]);
+
                         RVAxisID = axisID;
                         RVAxisPanel.label.text = stickInputsLabel[axisID];
                         break;
@@ -245,16 +229,15 @@ namespace Kurotori.UDrone
         {
             foreach (var drone in udrones)
             {
-                var controller = drone.GetController();
-                controller.SetCustomLHInput(stickInputsLabel[LHAxisID]);
-                controller.SetCustomLVInput(stickInputsLabel[LVAxisID]);
-                controller.SetCustomRHInput(stickInputsLabel[RHAxisID]);
-                controller.SetCustomRVInput(stickInputsLabel[RVAxisID]);
+                customControllerInput.SetCustomLHInput(stickInputsLabel[LHAxisID]);
+                customControllerInput.SetCustomLVInput(stickInputsLabel[LVAxisID]);
+                customControllerInput.SetCustomRHInput(stickInputsLabel[RHAxisID]);
+                customControllerInput.SetCustomRVInput(stickInputsLabel[RVAxisID]);
 
-                controller.SetInvertLH(LHAxisInvert);
-                controller.SetInvertLV(LVAxisInvert);
-                controller.SetInvertRH(RHAxisInvert);
-                controller.SetInvertRV(RVAxisInvert);
+                customControllerInput.SetInvertLH(LHAxisInvert);
+                customControllerInput.SetInvertLV(LVAxisInvert);
+                customControllerInput.SetInvertRH(RHAxisInvert);
+                customControllerInput.SetInvertRV(RVAxisInvert);
 
                 Debug.Log($"[DroneSetting] Set Custom LH : {stickInputsLabel[LHAxisID]} : {LHAxisInvert}");
                 Debug.Log($"[DroneSetting] Set Custom LV : {stickInputsLabel[LVAxisID]} : {LVAxisInvert}");

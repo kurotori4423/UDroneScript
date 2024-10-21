@@ -17,10 +17,126 @@ namespace Kurotori.UDrone
         /// </summary>
         public float localCameraAngle;
 
-        [UdonSynced(UdonSyncMode.None)]
-        public float CameraAngles;
+        [UdonSynced(UdonSyncMode.None), FieldChangeCallback(nameof(CameraAngles))]
+        private float m_cameraAngles;
+        [HideInInspector]
+        public float CameraAngles
+        {
+            get { return m_cameraAngles; } 
+            
+            set
+            {
+                m_cameraAngles = value;
+
+                OnChangeCameraAngle();
+            }
+        }
+
+        /// <summary>
+        /// 操作状態
+        /// </summary>
+        [UdonSynced(UdonSyncMode.None), FieldChangeCallback(nameof(IsArm))]
+        private bool m_isArm;
+        [HideInInspector]
+        public bool IsArm
+        {
+            get { return m_isArm; }
+            set 
+            { 
+                m_isArm = value;
+                if(Networking.IsOwner(gameObject))
+                {
+                    RequestSerialization();
+                }
+
+                if (OnChangeIsArmCallback != null)
+                {
+
+                    foreach (var behavior in OnChangeIsArmCallback)
+                    {
+                        if (behavior != null)
+                        {
+                            behavior.SendCustomEvent("OnChangeIsArm");
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 使用状態が変化したときに呼び出すコールバックUdon
+        /// </summary>
+        private UdonBehaviour[] OnChangeIsArmCallback;
+
 
         public UdonDroneCore m_droneCore;
+
+        /// <summary>
+        /// 操作状態が変化したときのコールバックを追加します
+        /// </summary>
+        /// <param name="behavior">コールバック</param>
+        public void AddOnChangeIsArmCallback(UdonBehaviour behavior)
+        {
+            if(OnChangeIsArmCallback == null)
+            {
+                OnChangeIsArmCallback = new UdonBehaviour[5];
+            }
+
+            for (int i = 0; i < OnChangeIsArmCallback.Length; i++)
+            {
+                if (OnChangeIsArmCallback[i] == null)
+                {
+                    OnChangeIsArmCallback[i] = behavior;
+                    return;
+                }
+
+                if (OnChangeIsArmCallback[i].Equals(behavior))
+                {
+                    // すでに追加済の場合はスキップ
+                    return;
+                }
+            }
+
+            // 満杯の場合は要素数を増やして再登録
+
+            var callbacks = new UdonBehaviour[OnChangeIsArmCallback.Length + 5];
+
+            for (int i = 0; i < OnChangeIsArmCallback.Length; i++)
+            {
+                callbacks[i] = OnChangeIsArmCallback[i];
+            }
+
+            callbacks[OnChangeIsArmCallback.Length] = behavior;
+
+            OnChangeIsArmCallback = callbacks;
+        }
+
+        /// <summary>
+        /// 操作状態が変化したときのコールバックを削除します
+        /// </summary>
+        /// <param name="behavior">コールバック</param>
+        public void RemoveOnChangeIsArmCallback(UdonBehaviour behavior)
+        {
+            for (int i = 0; i < OnChangeIsArmCallback.Length; i++)
+            {
+                if (OnChangeIsArmCallback[i] == null) continue;
+
+                if (OnChangeIsArmCallback[i].Equals(behavior))
+                {
+                    OnChangeIsArmCallback[i] = null;
+                    return;
+                }
+            }
+        }
+
+
+        public void OnChangeCameraAngle()
+        {
+            if (m_droneCore != null)
+            {
+                m_droneCore.SetCameraAngle(CameraAngles);
+            }
+        }
 
         /// <summary>
         /// オーナーの場合のみカメラアングルを変更します。
@@ -30,19 +146,12 @@ namespace Kurotori.UDrone
         public void SetCameraAngles(float angle)
         {
             localCameraAngle = angle;
-            
-            if(Utilities.IsValid(Networking.LocalPlayer) && Networking.LocalPlayer.IsOwner(gameObject))
+
+            if (Utilities.IsValid(Networking.LocalPlayer) && Networking.IsOwner(gameObject))
             {
                 CameraAngles = localCameraAngle;
-                m_droneCore.SetCameraAngle(CameraAngles);
                 RequestSerialization();
             }
-
-        }
-
-        public override void OnDeserialization()
-        {
-            m_droneCore.SetCameraAngle(CameraAngles);
         }
 
         /// <summary>
@@ -54,7 +163,6 @@ namespace Kurotori.UDrone
             if(player.isLocal)
             {
                 CameraAngles = localCameraAngle;
-                m_droneCore.SetCameraAngle(CameraAngles);
                 RequestSerialization();
             }
         }

@@ -12,6 +12,9 @@ namespace Kurotori.UDrone
     {
         DEFAULT,
         CUSTOM,
+        MIDI,
+
+        CONTROL_NUM,
     }
 
     [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
@@ -21,9 +24,9 @@ namespace Kurotori.UDrone
         TextMeshProUGUI label;
 
         CONTROL_TYPE currentMode = 0;
-        int maxModeNum = 2;
+        int maxModeNum = (int)CONTROL_TYPE.CONTROL_NUM;
 
-        string[] modeName = { "Default","CustomInput"};
+        string[] modeName = { "Default","CustomInput","MIDI"};
 
         public void OnPushButton()
         {
@@ -43,19 +46,22 @@ namespace Kurotori.UDrone
                 case CONTROL_TYPE.DEFAULT: // Default
                     foreach(var drone in udrones)
                     {
-                        drone.SetUseVRRate(false);
                         var controller = drone.GetController();
-                        controller.UseCustomInputOFF();
-
+                        controller.SetControllerInput(0);
                     }
                     break;
                 case CONTROL_TYPE.CUSTOM: // CustomInput
                     foreach(var drone in udrones)
                     {
-                        drone.SetUseVRRate(true);
                         var controller = drone.GetController();
-                        controller.UseCustomInputON();
-
+                        controller.SetControllerInput(1);
+                    }
+                    break;
+                case CONTROL_TYPE.MIDI:
+                    foreach(var drone in udrones)
+                    {
+                        var controller = drone.GetController();
+                        controller.SetControllerInput(2);
                     }
                     break;
             }

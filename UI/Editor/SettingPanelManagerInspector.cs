@@ -1,8 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEditor;
+﻿using System.Collections.Generic;
 using UdonSharpEditor;
+using UnityEditor;
+using UnityEngine;
 
 namespace Kurotori.UDrone
 {
@@ -14,6 +13,8 @@ namespace Kurotori.UDrone
         SerializedProperty _defaultPosition;
         SerializedProperty _settingPanels;
         SerializedProperty _mainPanel;
+        SerializedProperty _shareCamera;
+        SerializedProperty _controllerInputs;
 
         private void OnEnable()
         {
@@ -22,6 +23,8 @@ namespace Kurotori.UDrone
             _defaultPosition = serializedObject.FindProperty("defaultPosition");
             _settingPanels = serializedObject.FindProperty("settingPanels");
             _mainPanel = serializedObject.FindProperty("mainPanel");
+            _shareCamera = serializedObject.FindProperty("shareCamera");
+            _controllerInputs = serializedObject.FindProperty("controllerInputs");
         }
 
         public override void OnInspectorGUI()
@@ -33,29 +36,23 @@ namespace Kurotori.UDrone
             boldCenterStyle.alignment = TextAnchor.MiddleCenter; // 中心揃え
             boldCenterStyle.fontStyle = FontStyle.Bold; // 太字
 
-            EditorGUILayout.Space(2);
-            EditorGUILayout.LabelField("--- UDroneを追加したらCollectUDroneを押してください ---", boldCenterStyle);
-            EditorGUILayout.Space();
-
-            if (GUILayout.Button("Collect UDrone"))
+            if (EditorApplication.isPlaying)
             {
-                CollectUDrone();
-            }
-
-            EditorGUILayout.LabelField("UDrone : " + _udrones.arraySize);
-            using (new EditorGUI.DisabledScope(true))
-            {
-                for (int i = 0; i < _udrones.arraySize; i++)
+                EditorGUILayout.LabelField("UDrone : " + _udrones.arraySize);
+                using (new EditorGUI.DisabledScope(true))
                 {
-                    using (new EditorGUILayout.HorizontalScope())
+                    for (int i = 0; i < _udrones.arraySize; i++)
                     {
-                        EditorGUILayout.LabelField(i.ToString() + ":", GUILayout.Width(20));
-                        EditorGUILayout.ObjectField(_udrones.GetArrayElementAtIndex(i).objectReferenceValue, typeof(GameObject), true);
+                        using (new EditorGUILayout.HorizontalScope())
+                        {
+                            EditorGUILayout.LabelField(i.ToString() + ":", GUILayout.Width(20));
+                            EditorGUILayout.ObjectField(_udrones.GetArrayElementAtIndex(i).objectReferenceValue, typeof(GameObject), true);
+                        }
                     }
                 }
-            }
 
-            EditorGUILayout.Space(2);
+                EditorGUILayout.Space(2);
+            }
 
             EditorGUILayout.LabelField("メニューコンポーネント", EditorStyles.boldLabel);
 
@@ -63,6 +60,9 @@ namespace Kurotori.UDrone
             EditorGUILayout.PropertyField(_mainPanel);
             EditorGUILayout.PropertyField(_activaters);
             EditorGUILayout.PropertyField(_settingPanels);
+            EditorGUILayout.PropertyField(_shareCamera);
+
+            EditorGUILayout.PropertyField(_controllerInputs);
 
             if (serializedObject.hasModifiedProperties)
                 serializedObject.ApplyModifiedProperties();

@@ -49,6 +49,22 @@ namespace Kurotori.UDrone
         }
 
         /// <summary>
+        /// 外部から直接レートを設定する
+        /// </summary>
+        /// <param name="rcRate"></param>
+        /// <param name="spRate"></param>
+        /// <param name="expo"></param>
+        public void SetRateSetting(float rcRate, float spRate, float expo)
+        {
+            m_rcRateInputField.text = (rcRate.ToString());
+            m_spRateInputField.text = (spRate.ToString());
+            m_expoInputField.text = (expo.ToString());
+
+            ApplyDroneSetting();
+        }
+
+
+        /// <summary>
         /// inputがfloatにパースできた場合はその値を、できない場合はdefaultValueの値を返す。
         /// </summary>
         /// <param name="input"></param>

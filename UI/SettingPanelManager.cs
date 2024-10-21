@@ -18,22 +18,59 @@ namespace Kurotori.UDrone
         Transform defaultPosition;
 
         [SerializeField, HideInInspector]
-        UdonDroneCore[] udrones;
+        public UdonDroneCore[] udrones;
 
         [SerializeField]
         IDroneSettingPanel[] settingPanels;
 
         [SerializeField]
+        private DroneShareCamera shareCamera;
+
+        [SerializeField]
         GameObject mainPanel;
 
+        [SerializeField, HideInInspector]
+        public TimeAttackManager timeAttackManager;
+
         bool displayMainPanel = false; // コントローラーにアタッチ時のメインパネルの表示状態
+
+        [SerializeField, Tooltip("コントローラー入力スクリプト")]
+        private IControllerInput[] controllerInputs;
+
+        [SerializeField]
+        public KeyCode ResetDroneKey = KeyCode.P;
+        [SerializeField]
+        public KeyCode FlipOverKey = KeyCode.O;
 
         void Start()
         {
             mainPanel.SetActive(true);
+            
+            Setup();
 
             SetupPanelTab();
             SetupDroneSettings();
+        }
+
+        /// <summary>
+        /// セットアップ
+        /// </summary>
+        void Setup()
+        {
+            for (int i = 0; i < udrones.Length; i++)
+            {
+                var controller =udrones[i].GetController();
+                controller.m_settingPanel = this;
+                controller.droneCam = shareCamera;
+
+                controller.SetControllerInputs(controllerInputs);
+
+                if(timeAttackManager)
+                {
+                    // タイムアタックオブジェクトが存在する場合
+                    controller.m_timeAttackManager = timeAttackManager;
+                }
+            }
         }
 
         /// <summary>

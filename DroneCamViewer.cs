@@ -16,9 +16,17 @@ namespace Kurotori.UDrone
     public class DroneCamViewer : UdonSharpBehaviour
     {
         [Tooltip("ドローンのカメラ固定場所を指定する")]
-        public GameObject[] droneCameraRigs;
+        public UdonDroneCore[] droneCores;
         [Tooltip("ドローンカメラ本体")]
-        public Transform droneCam;
+        public Camera droneCam;
+
+        [Tooltip("カメラ解像度X")]
+        public int ResolutionX = 640;
+        [Tooltip("カメラ解像度Y")]
+        public int ResolutionY = 480;
+
+        [SerializeField, Tooltip("RenderTextureをセットしたいオブジェクト")]
+        private DroneCamRenderTextureAssigner[] m_renderTextureAssigners;
 
         public GameObject[] turnOffObjects;
         public GameObject[] turnOnObjects;
@@ -33,8 +41,30 @@ namespace Kurotori.UDrone
 
         int currentCam = 0;
 
+        UdonBehaviour m_udonBehaviour;
+
         void Start()
         {
+#if UNITY_ANDROID
+            // Android(Quest)ではPostProcessが使えないのでDefaultのまま
+            renderTexture = new RenderTexture(ResolutionX, ResolutionY, 16, RenderTextureFormat.Default);
+#else
+            // Postprocessに対応するためRenderTextureFormatをDefaultHDRへ
+            renderTexture = new RenderTexture(ResolutionX, ResolutionY, 16, RenderTextureFormat.DefaultHDR);
+#endif
+
+            droneCam.targetTexture = renderTexture;
+
+            foreach(var assigner in m_renderTextureAssigners)
+            {
+                assigner.SetRenderTexture(renderTexture);
+            }
+
+            m_udonBehaviour = GetComponent<UdonBehaviour>();
+
+            var syncVariables = droneCores[currentCam].m_ManualSyncVariables;
+            syncVariables.AddOnChangeIsArmCallback(m_udonBehaviour);
+
             SetLabel();
             TurnOff();
 
@@ -44,15 +74,15 @@ namespace Kurotori.UDrone
         {
             if (isVirtualCameraMode)
             {
-                targetObject.SetParent(droneCameraRigs[currentCam].transform);
+                targetObject.SetParent(droneCores[currentCam].CameraRig);
                 targetObject.localPosition = Vector3.zero;
                 targetObject.localRotation = Quaternion.identity;
             }
             else
             {
-                droneCam.SetParent(droneCameraRigs[currentCam].transform);
-                droneCam.localPosition = Vector3.zero;
-                droneCam.localRotation = Quaternion.identity;
+                droneCam.transform.SetParent(droneCores[currentCam].CameraRig);
+                droneCam.transform.localPosition = Vector3.zero;
+                droneCam.transform.localRotation = Quaternion.identity;
             }
         }
 
@@ -68,6 +98,8 @@ namespace Kurotori.UDrone
             }
             SetCamera();
 
+            droneCam.enabled = true;
+
         }
 
         public void TurnOff()
@@ -80,19 +112,42 @@ namespace Kurotori.UDrone
             {
                 obj.SetActive(false);
             }
+
+            droneCam.enabled = false;
         }
 
         void SetLabel()
         {
-#if !UNITY_EDITOR
-            string ownerName = Networking.GetOwner(droneCameraRigs[currentCam]).displayName;
+            string ownerName = Networking.GetOwner(droneCores[currentCam].gameObject).displayName;
+
+            var syncVariables = droneCores[currentCam].m_ManualSyncVariables;
+
+            if (!syncVariables.IsArm)
+            {
+                ownerName = "NO Player";
+            }
+
             text.text = string.Format("[{0}]{1}", currentCam, ownerName);
-#endif
+        }
+
+        /// <summary>
+        /// ドローンの操作状態が変化したときのコールバック
+        /// </summary>
+        public void OnChangeIsArm()
+        {
+            SetLabel();
         }
 
         public void Next()
         {
-            currentCam = currentCam + 1 > droneCameraRigs.Length - 1 ? 0 : currentCam + 1;
+            var prevSyncVariables = droneCores[currentCam].m_ManualSyncVariables;
+
+            currentCam = currentCam + 1 > droneCores.Length - 1 ? 0 : currentCam + 1;
+
+            var nextSyncVariables = droneCores[currentCam].m_ManualSyncVariables;
+
+            prevSyncVariables.RemoveOnChangeIsArmCallback(m_udonBehaviour);
+            nextSyncVariables.AddOnChangeIsArmCallback(m_udonBehaviour);
 
             SetLabel();
             SetCamera();
@@ -100,10 +155,18 @@ namespace Kurotori.UDrone
 
         public void Prev()
         {
-            currentCam = currentCam - 1 < 0 ? droneCameraRigs.Length - 1 : currentCam - 1;
+            var prevSyncVariables = droneCores[currentCam].m_ManualSyncVariables;
 
+            currentCam = currentCam - 1 < 0 ? droneCores.Length - 1 : currentCam - 1;
+
+            var nextSyncVariables = droneCores[currentCam].m_ManualSyncVariables;
+
+            prevSyncVariables.RemoveOnChangeIsArmCallback(m_udonBehaviour);
+            nextSyncVariables.AddOnChangeIsArmCallback(m_udonBehaviour);
+            
             SetLabel();
             SetCamera();
         }
+
     }
 }

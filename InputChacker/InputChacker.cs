@@ -5,6 +5,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.InputSystem;
 
 namespace Kurotori.UDrone
 {
@@ -17,6 +18,9 @@ namespace Kurotori.UDrone
 
         [SerializeField]
         Transform parent;
+
+        [SerializeField]
+        TextMeshProUGUI inputMethodText;
 
         GameObject[] sticks;
         Slider[] stickValues;
@@ -102,14 +106,66 @@ namespace Kurotori.UDrone
 
         private void Update()
         {
-#if !UNITY_EDITOR
             for (int i = 0; i < stickInputs.Length; ++i)
             {
                 var value = Input.GetAxisRaw(stickInputs[i]);
                 stickValues[i].value = value;
                 valueLabels[i].text = value.ToString();
             }
-#endif
+            VRCInputMethod inputMethod = InputManager.GetLastUsedInputMethod();
+
+            switch(inputMethod)
+            {
+                case VRCInputMethod.Keyboard:
+                    inputMethodText.text = "Keyboad";
+                    break;
+                case VRCInputMethod.Mouse:
+                    inputMethodText.text = "Mouse";
+                    break;
+                case VRCInputMethod.Controller:
+                    inputMethodText.text = "Controller";
+                    break;
+                case VRCInputMethod.Gaze:
+                    inputMethodText.text = "Gaze";
+                    break;
+                case VRCInputMethod.Vive:
+                    inputMethodText.text = "Vive";
+                    break;
+                case VRCInputMethod.Oculus:
+                    inputMethodText.text = "Oculus";
+                    break;
+                case VRCInputMethod.ViveXr:
+                    inputMethodText.text = "ViveXr";
+                    break;
+                case VRCInputMethod.Index:
+                    inputMethodText.text = "Index";
+                    break;
+                case VRCInputMethod.HPMotionController:
+                    inputMethodText.text = "HPMotionController";
+                    break;
+                case VRCInputMethod.Osc:
+                    inputMethodText.text = "Osc";
+                    break;
+                case VRCInputMethod.QuestHands:
+                    inputMethodText.text = "QuestHands";
+                    break;
+                case VRCInputMethod.Generic:
+                    inputMethodText.text = "Generic";
+                    break;
+                case VRCInputMethod.Touch:
+                    inputMethodText.text = "Touch";
+                    break;
+                case VRCInputMethod.OpenXRGeneric:
+                    inputMethodText.text = "OpenXRGeneric";
+                    break;
+                case VRCInputMethod.Pico:
+                    inputMethodText.text = "Pico";
+                    break;
+                default:
+                    inputMethodText.text = $"Unkown : {inputMethod}";
+                    break;
+            }
+
         }
     }
 }
