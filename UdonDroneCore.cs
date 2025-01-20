@@ -30,6 +30,9 @@ namespace Kurotori.UDrone
         [SerializeField]
         public UdonDroneManualSyncVariables m_ManualSyncVariables;
 
+        [SerializeField]
+        public DroneNamePlate m_DroneNamePlate;
+
         [Header("Controller")]
         [SerializeField]
         private UdonDroneController m_Controller;
@@ -1125,6 +1128,15 @@ namespace Kurotori.UDrone
             m_audioFixToController = flag;
 
             UpdateAudioFix();
+        }
+
+        /// <summary>
+        /// ドローンのネームプレートを表示するかどうか
+        /// </summary>
+        /// <param name="flag"></param>
+        public void SetShowDroneNamePlate(bool flag)
+        {
+            m_DroneNamePlate.ShowDroneNamePlate(flag);
         }
 
         public override void OnOwnershipTransferred(VRCPlayerApi player)

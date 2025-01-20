@@ -15,7 +15,7 @@ namespace Kurotori.UDrone
     /// </summary>
     public class DroneSettingAttacher : IProcessSceneWithReport
     {
-        public int callbackOrder => 0;
+        public int callbackOrder => -1;
 
         /// <summary>
         /// シーンのビルド時に呼ばれる処理

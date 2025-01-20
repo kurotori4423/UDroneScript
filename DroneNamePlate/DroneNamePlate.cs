@@ -23,7 +23,10 @@ namespace Kurotori.UDrone
 
         [SerializeField]
         private UdonDroneCore droneCore;
+        [SerializeField]
         private UdonDroneManualSyncVariables syncVariables;
+
+        bool IsShow = true;
 
         private void Start()
         {
@@ -34,13 +37,21 @@ namespace Kurotori.UDrone
 
         public void OnChangeIsArm()
         {
-            Debug.Log($"UDrone: DroneNamePlane IsArmChange {syncVariables.IsArm}");
-            nameplateBase.gameObject.SetActive(syncVariables.IsArm);
-
-            if(syncVariables.IsArm)
+            if (Utilities.IsValid(syncVariables))
             {
-                nameText.text = Networking.GetOwner(droneCore.gameObject).displayName;
+                nameplateBase.gameObject.SetActive(syncVariables.IsArm && IsShow);
+
+                if (syncVariables.IsArm)
+                {
+                    nameText.text = Networking.GetOwner(droneCore.gameObject).displayName;
+                }
             }
+        }
+
+        public void ShowDroneNamePlate(bool visible)
+        {
+            IsShow = visible;
+            OnChangeIsArm();
         }
 
         private void LateUpdate()
