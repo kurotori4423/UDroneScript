@@ -33,6 +33,12 @@ namespace Kurotori.UDrone
         [SerializeField]
         public DroneNamePlate m_DroneNamePlate;
 
+        [SerializeField]
+        public Color m_DroneColor = Color.gray;
+
+        [SerializeField]
+        IDroneColorApplier[] droneColorAppliers;
+
         [Header("Controller")]
         [SerializeField]
         private UdonDroneController m_Controller;
@@ -322,7 +328,9 @@ namespace Kurotori.UDrone
                     break;
             }
 
-#endregion
+            #endregion
+
+            ApplyColor();
 
         }
 
@@ -1149,6 +1157,14 @@ namespace Kurotori.UDrone
             else
             {
                 m_Body.isKinematic = true;
+            }
+        }
+
+        public void ApplyColor()
+        {
+            foreach(var colorApplier in droneColorAppliers)
+            {
+                colorApplier.SetColor(m_DroneColor);
             }
         }
 
