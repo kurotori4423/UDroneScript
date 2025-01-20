@@ -47,6 +47,9 @@ namespace Kurotori.UDrone
 
         Transform stationTransform;
 
+        [SerializeField]
+        GameObject ControllerVisual;
+
         [Header("SettingPanel")]
         [SerializeField] Transform m_settingPanelPivot;
 
@@ -57,7 +60,7 @@ namespace Kurotori.UDrone
         public TimeAttackManager m_timeAttackManager;
 
         VRC_Pickup pickup;
-        Renderer pickupRenderer;
+        
         Collider pickupCollider;
 
 
@@ -86,7 +89,6 @@ namespace Kurotori.UDrone
             initRotation = droneCamDisplay.transform.rotation;
 
             pickup = (VRC_Pickup)gameObject.GetComponent(typeof(VRC_Pickup));
-            pickupRenderer = gameObject.GetComponent<Renderer>();
             pickupCollider = gameObject.GetComponent<Collider>();
             
             
@@ -117,7 +119,8 @@ namespace Kurotori.UDrone
 
             // ピックアップをオフに
             pickup.pickupable = false;
-            pickupRenderer.enabled = false;
+            //pickupRenderer.enabled = false;
+            ControllerVisual.SetActive(false);
             pickupCollider.enabled = false;
             pickup.Drop();
 
@@ -162,7 +165,7 @@ namespace Kurotori.UDrone
             if (!controlling)
             {
                 pickup.pickupable = false;
-                pickupRenderer.enabled = false;
+                ControllerVisual.SetActive(false);
                 pickupCollider.enabled = false;
             }
         }
@@ -172,7 +175,7 @@ namespace Kurotori.UDrone
             if (!controlling)
             {
                 pickup.pickupable = true;
-                pickupRenderer.enabled = true;
+                ControllerVisual.SetActive(true);
                 pickupCollider.enabled = true;
             }
         }
@@ -205,7 +208,7 @@ namespace Kurotori.UDrone
             m_settingPanel.SetDefaultPosition();
 
             pickup.pickupable = true;
-            pickupRenderer.enabled = true;
+            ControllerVisual.SetActive(true);
             pickupCollider.enabled = true;
             controlling = false;
 
