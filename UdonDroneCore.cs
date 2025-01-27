@@ -668,6 +668,30 @@ namespace Kurotori.UDrone
             m_CameraRotateRig.localRotation = Quaternion.AngleAxis(eularAngle, Vector3.right);
         }
 
+        public float GetCameraFoV()
+        {
+            if(Networking.IsOwner(gameObject))
+            {
+                return m_ManualSyncVariables.localCameraAngle;
+            }
+            else
+            {
+                return m_ManualSyncVariables.CameraFoV;
+            }
+        }
+
+        public void SetCameraFoV()
+        {
+            if (Networking.IsOwner(gameObject))
+            {
+                m_Controller.droneCam.SetDroneCameraFoV(m_ManualSyncVariables.CameraFoV);
+            }
+            else
+            {
+                m_Controller.droneCam.SetDroneCameraFoV(m_ManualSyncVariables.localCameraFoV);
+            }
+        }
+
         public void ChangeMode()
         {
             switch (m_Mode)

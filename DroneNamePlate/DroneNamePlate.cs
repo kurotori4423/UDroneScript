@@ -56,7 +56,7 @@ namespace Kurotori.UDrone
 
         private void LateUpdate()
         {
-            if(syncVariables.IsArm)
+            if (syncVariables.IsArm)
             {
                 var platePosition = droneCore.transform.position + Vector3.up * PlateHeight;
                 nameplateBase.position = platePosition;

@@ -22,6 +22,11 @@ namespace Kurotori.UDrone
         [SerializeField]
         TextMeshProUGUI verticalSpeed;
 
+        [SerializeField]
+        Camera droneCam;
+        [SerializeField]
+        Camera overrideCam;
+
 
 
         private void Update()
@@ -42,6 +47,12 @@ namespace Kurotori.UDrone
         public void AttachDrone(Rigidbody drone)
         {
             attachedDrone = drone;
+        }
+
+        public void SetDroneCameraFoV(float fov)
+        {
+            droneCam.fieldOfView = fov;
+            overrideCam.fieldOfView = fov;
         }
     }
 }

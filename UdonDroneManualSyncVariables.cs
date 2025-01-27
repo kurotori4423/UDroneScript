@@ -32,6 +32,22 @@ namespace Kurotori.UDrone
             }
         }
 
+        public float localCameraFoV;
+
+        [UdonSynced(UdonSyncMode.None), FieldChangeCallback(nameof(CameraFoV))]
+        private float m_cameraFoV;
+        public float CameraFoV
+        {
+            get => m_cameraFoV;
+            set
+            {
+                m_cameraFoV = value;
+                
+                OnChangeCameraFoV();
+            }
+        }
+
+
         /// <summary>
         /// 操作状態
         /// </summary>
@@ -132,9 +148,17 @@ namespace Kurotori.UDrone
 
         public void OnChangeCameraAngle()
         {
-            if (m_droneCore != null)
+            if (Utilities.IsValid(m_droneCore))
             {
                 m_droneCore.SetCameraAngle(CameraAngles);
+            }
+        }
+
+        public void OnChangeCameraFoV()
+        {
+            if(Utilities.IsValid(m_droneCore))
+            {
+                m_droneCore.SetCameraFoV();
             }
         }
 
@@ -154,6 +178,17 @@ namespace Kurotori.UDrone
             }
         }
 
+        public void SetCameraFov(float fov)
+        {
+            localCameraFoV = fov;
+
+            if(Utilities.IsValid(Networking.LocalPlayer) && Networking.IsOwner(gameObject))
+            {
+                CameraFoV = localCameraFoV;
+                RequestSerialization();
+            }
+        }
+
         /// <summary>
         /// オーナーシップが変更されたらローカルカメラアングルを同期します。
         /// </summary>
@@ -163,6 +198,7 @@ namespace Kurotori.UDrone
             if(player.isLocal)
             {
                 CameraAngles = localCameraAngle;
+                CameraFoV = localCameraFoV;
                 RequestSerialization();
             }
         }
