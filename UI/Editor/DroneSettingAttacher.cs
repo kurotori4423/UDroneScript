@@ -39,28 +39,28 @@ namespace Kurotori.UDrone
 
             foreach (var sceneRootObject in sceneRootObjects)
             {
-                var droneSettings = sceneRootObject.GetComponentsInChildren<SettingPanelManager>();
+                var droneSettings = sceneRootObject.GetComponentsInChildren<SettingPanelManager>(true);
                 sceneDroneSettings.AddRange(droneSettings);
 
-                var drones = sceneRootObject.GetComponentsInChildren<UdonDroneCore>();
+                var drones = sceneRootObject.GetComponentsInChildren<UdonDroneCore>(true);
                 droneCores.AddRange(drones);
 
-                var droneCamViewers = sceneRootObject.GetComponentsInChildren<DroneCamViewer>();
+                var droneCamViewers = sceneRootObject.GetComponentsInChildren<DroneCamViewer>(true);
                 sceneDroneCamViewers.AddRange(droneCamViewers);
 
-                var timeAttackManagers = sceneRootObject.GetComponentsInChildren<TimeAttackManager>();
+                var timeAttackManagers = sceneRootObject.GetComponentsInChildren<TimeAttackManager>(true);
                 sceneTimeAttackManagers.AddRange(timeAttackManagers);
 
-                var timeAttackTracks = sceneRootObject.GetComponentsInChildren<TimeAttackTrack>();
+                var timeAttackTracks = sceneRootObject.GetComponentsInChildren<TimeAttackTrack>(true);
                 sceneTimeAttackTracks.AddRange(timeAttackTracks);
 
-                var timeAttackLog = sceneRootObject.GetComponentsInChildren<TimeAttackLog>();
+                var timeAttackLog = sceneRootObject.GetComponentsInChildren<TimeAttackLog>(true);
                 sceneTimeAttackLog.AddRange(timeAttackLog);
 
-                var syncCameras = sceneRootObject.GetComponentsInChildren<SyncDroneCamView>();
+                var syncCameras = sceneRootObject.GetComponentsInChildren<SyncDroneCamView>(true);
                 sceneSyncDroneCamViews.AddRange(syncCameras);
 
-                var droneResetButtons = sceneRootObject.GetComponentsInChildren<AllDroneResetButton>();
+                var droneResetButtons = sceneRootObject.GetComponentsInChildren<AllDroneResetButton>(true);
                 sceneDroneResetButton.AddRange(droneResetButtons);
             }
             Debug.Log($"Scene Drone Num:{droneCores.Count}");

@@ -39,5 +39,10 @@ namespace Kurotori.UDrone
             return false;
         }
 
+        virtual public bool GetTimeAttackResetButtonInput()
+        {
+            return false;
+        }
+
     }
 }

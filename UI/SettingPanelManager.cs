@@ -41,6 +41,8 @@ namespace Kurotori.UDrone
         public KeyCode ResetDroneKey = KeyCode.P;
         [SerializeField]
         public KeyCode FlipOverKey = KeyCode.O;
+        [SerializeField]
+        public KeyCode ResetTimeAttackKey = KeyCode.P;
 
         void Start()
         {

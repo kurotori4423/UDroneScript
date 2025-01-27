@@ -345,7 +345,7 @@ namespace Kurotori.UDrone
 
         public void OnPushTimerResetButton()
         {
-            if(m_timeAttackManager != null)
+            if(Utilities.IsValid(m_timeAttackManager))
                 m_timeAttackManager.ResetRaceAll();
         }
 
@@ -390,6 +390,11 @@ namespace Kurotori.UDrone
                 if (m_controllerInputs[m_InputTypeIndex].GetFlipOverButtonInput())
                 {
                     FlipOverDrone();
+                }
+
+                if (m_controllerInputs[m_InputTypeIndex].GetTimeAttackResetButtonInput())
+                {
+                    OnPushTimerResetButton();
                 }
 
                 if (Input.GetKeyDown(m_settingPanel.ResetDroneKey))

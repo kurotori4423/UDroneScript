@@ -15,6 +15,9 @@ namespace Kurotori.UDrone
         SerializedProperty _mainPanel;
         SerializedProperty _shareCamera;
         SerializedProperty _controllerInputs;
+        SerializedProperty _resetDroneKey;
+        SerializedProperty _flipOverKey;
+        SerializedProperty _resetTimeAttackKey;
 
         private void OnEnable()
         {
@@ -25,6 +28,10 @@ namespace Kurotori.UDrone
             _mainPanel = serializedObject.FindProperty("mainPanel");
             _shareCamera = serializedObject.FindProperty("shareCamera");
             _controllerInputs = serializedObject.FindProperty("controllerInputs");
+            _resetDroneKey = serializedObject.FindProperty("ResetDroneKey");
+            _flipOverKey = serializedObject.FindProperty("FlipOverKey");
+            _resetTimeAttackKey = serializedObject.FindProperty("ResetTimeAttackKey");
+
         }
 
         public override void OnInspectorGUI()
@@ -63,6 +70,12 @@ namespace Kurotori.UDrone
             EditorGUILayout.PropertyField(_shareCamera);
 
             EditorGUILayout.PropertyField(_controllerInputs);
+
+            EditorGUILayout.LabelField("基本入力設定", EditorStyles.boldLabel);
+
+            EditorGUILayout.PropertyField(_resetDroneKey);
+            EditorGUILayout.PropertyField(_flipOverKey);
+            EditorGUILayout.PropertyField(_resetTimeAttackKey);
 
             if (serializedObject.hasModifiedProperties)
                 serializedObject.ApplyModifiedProperties();

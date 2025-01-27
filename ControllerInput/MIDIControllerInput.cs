@@ -17,6 +17,7 @@ namespace Kurotori.UDrone
         private bool resetSignal = false;
 
         private bool flipOverSignal = false;
+        private bool timeAttackResetSignal = false;
 
         public override float GetLHorizontalAxis()
         {
@@ -46,6 +47,11 @@ namespace Kurotori.UDrone
         public override bool GetFlipOverButtonInput()
         {
             return flipOverSignal;
+        }
+
+        public override bool GetTimeAttackResetButtonInput()
+        {
+            return timeAttackResetSignal;
         }
 
 
@@ -86,6 +92,9 @@ namespace Kurotori.UDrone
                     break;
                 case 1:
                     flipOverSignal = (number == 1);
+                    break;
+                case 2:
+                    timeAttackResetSignal = (number == 1);
                     break;
             }
         }

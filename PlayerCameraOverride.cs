@@ -12,6 +12,8 @@ namespace Kurotori.UDrone
         [SerializeField]
         Camera overrideCamera;
 
+        public KeyCode keyCode = KeyCode.F10;
+
 
         void Start()
         {
@@ -20,7 +22,7 @@ namespace Kurotori.UDrone
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F10))
+            if (Input.GetKeyDown(keyCode))
             {
                 overrideCamera.enabled = !overrideCamera.enabled;
             }
