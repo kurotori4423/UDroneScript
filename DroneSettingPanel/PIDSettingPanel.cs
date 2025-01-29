@@ -15,11 +15,11 @@ namespace Kurotori.UDrone
         public bool isAnglePID;
 
         [SerializeField]
-        InputField m_pInputField;
+        TMP_InputField m_pInputField;
         [SerializeField]
-        InputField m_iInputField;
+        TMP_InputField m_iInputField;
         [SerializeField]
-        InputField m_dInputField;
+        TMP_InputField m_dInputField;
 
         float m_p = 1.0f;
         float m_i = 0.7f;

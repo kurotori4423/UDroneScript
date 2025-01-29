@@ -295,8 +295,6 @@ namespace Kurotori.UDrone
             // 空気抵抗は自前で計算するため0に設定
             m_Body.drag = 0.0f;
 
-            // 重心を原点に
-            m_Body.centerOfMass = Vector3.zero;
 
             m_objectSync = GetComponent<VRCObjectSync>();
 
@@ -494,7 +492,7 @@ namespace Kurotori.UDrone
 
             Vector3 pid = -(P + I + D);
 
-            Debug.Log($"PID:{P.y} {I.y} {D.y}");
+            //Debug.Log($"PID:{P.y} {I.y} {D.y}");
 
             float angleForceX = Mathf.Sign(pid.x) * Mathf.Min(Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass, m_MaxRotationThrottleForce * m_Body.mass);
             //float angleForceX = Mathf.Sign(pid.x) * Mathf.Abs(pid.x) * m_MaxRotationThrottleForce * m_Body.mass;
@@ -511,7 +509,7 @@ namespace Kurotori.UDrone
             //body.AddRelativeTorque(Vector3.up * (angleForceY * yawForce));
             m_RollTorque = angleForceY;
 
-            Debug.Log($"RollTorque:{m_RollTorque}");
+            //Debug.Log($"RollTorque:{m_RollTorque}");
 
             //Debug.Log("UDRONE: TargetVelocity:(" + localAnglerVelocity.x + "," + localAnglerVelocity.y + "," + localAnglerVelocity.z + ")");
         }

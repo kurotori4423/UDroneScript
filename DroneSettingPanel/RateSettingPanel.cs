@@ -12,11 +12,11 @@ namespace Kurotori.UDrone
     public class RateSettingPanel : IDroneSettingPanel
     {
         [SerializeField]
-        InputField m_rcRateInputField;
+        TMP_InputField m_rcRateInputField;
         [SerializeField]
-        InputField m_spRateInputField;
+        TMP_InputField m_spRateInputField;
         [SerializeField]
-        InputField m_expoInputField;
+        TMP_InputField m_expoInputField;
 
         [SerializeField]
         TextMeshProUGUI m_maxAngleVelocityValue;
